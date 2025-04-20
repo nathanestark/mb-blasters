@@ -1,0 +1,22 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "outDir": "dist",
+    // "rootDir": "./src",
+    // "baseUrl": "./",
+
+    "target": "es2024",
+    "moduleResolution": "node",
+    "lib": ["dom", "esnext"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+
+    // "paths": {
+    //   "src/*": ["./src/*"]
+    // }
+  },
+  "include": ["src"]
+}

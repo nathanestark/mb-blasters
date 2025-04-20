@@ -1,0 +1,24 @@
+{
+  "name": "mb-blasters",
+  "version": "1.0.0",
+  "main": "index.js",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build:web": "npm --workspace apps/web run build",
+    "build:server": "npm --workspace apps/server run build",
+    "dev:web": "npm --workspace apps/web run dev",
+    "dev:server": "npm --workspace apps/server run dev"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "private": true,
+  "devDependencies": {
+    "gl-matrix": "^3.4.3",
+    "star-engine": "file:../star-engine"
+  }
+}
