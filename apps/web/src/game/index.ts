@@ -212,6 +212,7 @@ export default class Game extends GameBase {
 
     this.controller.bindCommand({ device: "mouse", key: "0" }, CONTROLLER_ACTION, fire);
     this.controller.bindCommand({ device: "keyboard", key: " " }, CONTROLLER_ACTION, fire);
+    this.controller.bindCommand({ device: "mouse", key: "2" }, CONTROLLER_ACTION, special);
     this.controller.bindCommand({ device: "keyboard", key: "shift" }, CONTROLLER_ACTION, special);
     this.controller.bindCommand({ device: "keyboard", key: "w" }, CONTROLLER_ACTION, thrust);
     this.controller.bindCommand(
@@ -245,6 +246,7 @@ export default class Game extends GameBase {
 
       this.controller.unbindCommand({ device: "mouse", key: "0" }, CONTROLLER_ACTION, fire);
       this.controller.unbindCommand({ device: "keyboard", key: " " }, CONTROLLER_ACTION, fire);
+      this.controller.unbindCommand({ device: "mouse", key: "2" }, CONTROLLER_ACTION, special);
       this.controller.unbindCommand(
         { device: "keyboard", key: "shift" },
         CONTROLLER_ACTION,

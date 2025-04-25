@@ -1,4 +1,4 @@
-import React, { FC, useState, useRef, useCallback, useEffect } from "react";
+import React, { FC, useState, useRef, useCallback, useEffect, MouseEventHandler } from "react";
 
 import useGame from "./useGame";
 import Player from "@web/game/player";
@@ -27,7 +27,12 @@ const GameViewer: FC = () => {
     game.registerInput(canvasRef.current);
   }, [game, isCanvasValid]);
 
-  return <canvas ref={handelCanvasRef} tabIndex={1} />;
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    return false;
+  }, []);
+
+  return <canvas ref={handelCanvasRef} tabIndex={1} onContextMenu={handleContextMenu} />;
 };
 
 export default GameViewer;
