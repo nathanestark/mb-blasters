@@ -64,16 +64,21 @@ export default class Game extends GameBase {
     return (await this.addGameObject(player, this._players)) as Player;
   }
 
-  async spawnShip(player: Player, _config: ShipConfiguration) {
+  async spawnShip(player: Player, config: ShipConfiguration) {
     if (player.ship) {
       this.removeGameObject(player.ship);
     }
     const newShip = new Ship(player, {
-      onDestroyed: () => {
-        delete player.ship;
-      }
+      type: config.type,
+      special: config.special,
+      maxThrust: config.maxThrust,
+      maxSpeed: config.maxSpeed,
+      maxRotate: config.maxRotate,
+      bulletSpeed: config.bulletSpeed,
+      specialPower: config.specialPower
     });
     player.ship = newShip;
+    newShip.on("destroyed", () => delete player.ship);
     return await this.addGameObject(newShip, this._ships);
   }
 }

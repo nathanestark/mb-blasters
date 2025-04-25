@@ -5,6 +5,7 @@ import Player, { SerializedPlayer } from "./player";
 import WorldBounds, { SerializedWorldBounds } from "./worldBounds";
 import Ship, { SerializedShip } from "./ship";
 import Bullet, { SerializedBullet } from "./bullet";
+import Explosion, { SerializedExplosion } from "./explosion";
 
 const DR_FREQ = 5000;
 
@@ -78,6 +79,9 @@ export default class NetworkUpdate extends GameObject {
 
           const bullet = Bullet.from(owner, sNewObj);
           game.addGameObject(bullet, game.collidables);
+        } else if (newObj.type == "Explosion") {
+          const explosion = Explosion.from(game.resources, newObj as SerializedExplosion);
+          game.addGameObject(explosion, game.collidables);
         } else {
           // Ignore any we don't recognize
           console.warn("Unrecognized serialized type in network update:", newObj.type);
@@ -91,6 +95,7 @@ export default class NetworkUpdate extends GameObject {
     game
       .filter("network")
       .filter((obj) => !existing.has(obj.id))
+      .filter((obj) => !obj.tags.includes("explosion")) // Let the client handle removal of explosions
       .forEach((obj) => game.removeGameObject(obj));
 
     // Clear out our update.

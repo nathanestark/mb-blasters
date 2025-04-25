@@ -15,18 +15,37 @@
     position: relative;
     top: 0;
     width: 100%;
+    height: 100%;
 
     display: flex;
-    justify-content: flex-end;
+    flex-direction: column;
+    justify-content: space-between;
+
+    pointer-events: visiblePainted;
 
     padding: 1rem;
 
-    .playersList {
-      flex: 0 0 auto;
-
-      color: white;
-      border: 1px solid white;
-      padding: 0.5rem;
+    & > header {
+      display: flex;
+      justify-content: flex-end;
     }
+    & > footer {
+      display: flex;
+      justify-content: flex-end;
+    }
+  }
+  .playersList {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+
+    color: white;
+    border: 1px solid white;
+    padding: 0.5rem;
+  }
+  .shipConfig {
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
   }
 }

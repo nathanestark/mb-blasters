@@ -24,9 +24,10 @@ const GameViewer: FC = () => {
     if (!canvasRef.current || !game) return;
 
     game.addCamera(canvasRef.current);
+    game.registerInput(canvasRef.current);
   }, [game, isCanvasValid]);
 
-  return <canvas ref={handelCanvasRef} />;
+  return <canvas ref={handelCanvasRef} tabIndex={1} />;
 };
 
 export default GameViewer;

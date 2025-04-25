@@ -8,6 +8,7 @@ import { GameContext } from "./useGame";
 
 import GameViewer from "./GameViewer";
 import PlayerList from "./PlayerList";
+import ShipConfig from "./ShipConfig";
 
 import styles from "./App.module.scss";
 
@@ -22,21 +23,24 @@ function App() {
 
     const game = new Game(socket);
     (async () => {
-      game.start();
       await game.load();
-      game.connect();
       setGame(game);
-      game.startGame();
     })();
   }, []);
+
+  useEffect(() => {
+    if (game && !game._running && game.primaryCamera) {
+      game.connect();
+      game.start();
+    }
+  }, [game]);
 
   return (
     <GameContext.Provider value={{ game: game }}>
       <div className={styles.app}>
         <GameViewer />
-        <div className={styles.overlay}>
-          <PlayerList />
-        </div>
+        <PlayerList />
+        <ShipConfig className={styles.shipConfig} />
       </div>
     </GameContext.Provider>
   );

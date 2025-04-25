@@ -1,18 +1,18 @@
 import { CircleColliderResult, ColliderResult } from "star-engine";
 import { NetworkObject } from "./network";
 import GameBaseObject, {
-  GameBaseObjectProperties,
-  SerializedGameBaseObject
-} from "./gameBaseObject";
+  CollidableGameBaseObjectProperties,
+  SerializedCollidableGameBaseObject
+} from "./collidableGameBaseObject";
 
 export interface BulletConfiguration {}
 
-export interface SerializedBullet extends SerializedGameBaseObject {
+export interface SerializedBullet extends SerializedCollidableGameBaseObject {
   color: string;
   owner: number;
 }
 
-export interface BulletProperties extends GameBaseObjectProperties {
+export interface BulletProperties extends CollidableGameBaseObjectProperties {
   color?: string;
 }
 
@@ -24,7 +24,7 @@ export default class Bullet extends GameBaseObject {
     super({
       ...{
         mass: 0.1,
-        radius: 2
+        radius: 3
       },
       ...superProps
     });
@@ -35,11 +35,19 @@ export default class Bullet extends GameBaseObject {
     if (color) this._color = color;
   }
 
-  onCollided(thisObj: CircleColliderResult, otherObj: ColliderResult) {
+  onCollision(thisObj: ColliderResult, otherObj: ColliderResult) {
     if (this.removed) return;
 
     const myParent = otherObj.owner && otherObj.owner == this.owner;
-    if (otherObj.owner instanceof GameBaseObject && !myParent) {
+    if (otherObj.owner instanceof GameBaseObject && myParent) return;
+
+    super.onCollision(thisObj, otherObj);
+  }
+
+  onCollided(thisObj: CircleColliderResult, otherObj: ColliderResult) {
+    if (this.removed) return;
+
+    if (otherObj.owner instanceof GameBaseObject) {
       this.removed = true;
       this.game.removeGameObject(this);
     } else {
@@ -47,9 +55,11 @@ export default class Bullet extends GameBaseObject {
     }
   }
 
-  serialize(): SerializedBullet {
+  serialize(): SerializedBullet | null {
+    const sObj = super.serialize();
+    if (!sObj) return null;
     return {
-      ...super.serialize(),
+      ...sObj,
       type: "Bullet",
 
       owner: this.owner.id,

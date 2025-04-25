@@ -17,6 +17,7 @@ export interface Animation extends RenderableImage {
   framesPerSecond?: number;
   framesPerMillisecond?: number;
   frameSpacing: vec2;
+  getFrame?: (animFrame: number) => number;
 }
 
 export interface RenderableImageWithAnimation extends RenderableImage {
@@ -131,7 +132,8 @@ export default class GameBaseObjectRenderer {
         newAnimation.getFrame = (animFrame: number) => {
           return Math.min(animFrame, newAnimation.frames.length - 1);
         };
-        if (newAnimation.repeatMethod == "loop") {
+        if (animation.getFrame) newAnimation.getFrame = animation.getFrame;
+        else if (newAnimation.repeatMethod == "loop") {
           // Or loop back to the beginning
           newAnimation.getFrame = (animFrame: number) => {
             return animFrame % newAnimation.frames.length;
@@ -179,9 +181,7 @@ export default class GameBaseObjectRenderer {
   }
 
   startAnimation(animation: string) {
-    console.log("Starting");
     if (this.image?.animations?.[animation]) {
-      console.log(animation, this.image?.animations);
       this.image.curAnimation = this.image.animations[animation];
       this.image.animationStartTime = 0;
     }
@@ -249,7 +249,6 @@ export default class GameBaseObjectRenderer {
 
     if (this.image) {
       if (this.image.curAnimation) {
-        console.log("Animating", this.image.curAnimation);
         this.drawImage(
           camera,
           this._getFrame(this.image, this.image.curAnimation, time.animationTime)

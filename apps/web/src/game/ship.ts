@@ -8,6 +8,9 @@ import GameBaseObjectRenderer, {
   RenderImage
 } from "./gameBaseObjectRenderer";
 import DefaultCamera from "./defaultCamera";
+import Game from "./index";
+import { SpecialType, Special } from "@shared/game/specials";
+import Shield from "./specials/shield";
 
 export { SerializedShip };
 
@@ -31,49 +34,10 @@ export default class Ship extends ShipBase {
     this._fireRecord = 0;
   }
 
-  onDestroyed() {
+  destroy() {
     if (this._fireInterval) clearInterval(this._fireInterval);
-    super.onDestroyed();
-  }
-
-  fire(on: boolean) {
-    if (on && !this._firing) {
-      this.fireNow();
-      this._fireInterval = setInterval(() => {
-        this.fireNow();
-      }, 150);
-    } else {
-      this._firing = false;
-      clearInterval(this._fireInterval);
-    }
-  }
-
-  fireNow() {
-    if (this._fireRecord >= 4) return;
-    this._fireRecord++;
-    setTimeout(() => {
-      this._fireRecord--;
-    }, 1000);
-
-    const temp = vec3.fromValues(1, 0, 0);
-    const rotQuat = quat.identity(quat.create());
-    quat.rotateZ(rotQuat, rotQuat, this.rotation);
-    vec3.transformQuat(temp, temp, rotQuat);
-
-    const position = vec2.clone(this.position);
-    const velocity = vec2.fromValues(temp[0], temp[1]);
-    vec2.scale(velocity, velocity, 300);
-    vec2.add(velocity, velocity, this.velocity);
-    const bullet = new Bullet(this, {
-      position: position,
-      velocity: velocity
-    });
-
-    const game = this.game;
-    game.addGameObject(bullet, this.parent);
-    setTimeout(() => {
-      if (!bullet.removed) game.removeGameObject(bullet);
-    }, 500);
+    super.destroy();
+    this._renderer.startAnimation("destroy");
   }
 
   thrust(on: boolean) {
@@ -88,33 +52,124 @@ export default class Ship extends ShipBase {
 
   draw(camera: DefaultCamera, time: RefreshTime) {
     this._renderer.draw(camera, time);
+    if (this._special.draw) this._special.draw(camera, time);
+  }
+
+  createSpecial(type: SpecialType, power: number): Special {
+    if (type == "shield") return new Shield(this, power);
+    return super.createSpecial(type, power);
+  }
+
+  static deltaShip(
+    image?: HTMLImageElement
+  ): undefined | HTMLImageElement | RenderableImageWithAnimation | RenderImage {
+    if (!image) return;
+
+    return {
+      image: image,
+      clipSize: vec2.fromValues(64, 64),
+      rotation: Math.PI / 2,
+      animations: {
+        thrust: {
+          framesPerSecond: 20,
+          image: image,
+          rotation: Math.PI / 2,
+          clipSize: vec2.fromValues(64, 64),
+          clipPosition: vec2.fromValues(0, 64),
+          frameSpacing: vec2.fromValues(0, 64),
+          frames: 9,
+          repeatMethod: "loop"
+        },
+        destroy: {
+          framesPerSecond: 20,
+          image: image,
+          rotation: Math.PI / 2,
+          clipSize: vec2.fromValues(64, 64),
+          clipPosition: vec2.fromValues(64, 0),
+          frameSpacing: vec2.fromValues(0, 64),
+          frames: 5
+        }
+      }
+    } as RenderableImageWithAnimation;
+  }
+  static sweepShip(
+    image?: HTMLImageElement
+  ): undefined | HTMLImageElement | RenderableImageWithAnimation | RenderImage {
+    if (!image) return;
+
+    return {
+      image: image,
+      clipSize: vec2.fromValues(64, 64),
+      rotation: Math.PI / 2,
+      animations: {
+        thrust: {
+          framesPerSecond: 20,
+          image: image,
+          rotation: Math.PI / 2,
+          clipSize: vec2.fromValues(64, 64),
+          clipPosition: vec2.fromValues(0, 64),
+          frameSpacing: vec2.fromValues(0, 64),
+          frames: 9,
+          repeatMethod: "loop"
+        },
+        destroy: {
+          framesPerSecond: 20,
+          image: image,
+          rotation: Math.PI / 2,
+          clipSize: vec2.fromValues(64, 64),
+          clipPosition: vec2.fromValues(64, 0),
+          frameSpacing: vec2.fromValues(0, 64),
+          frames: 5
+        }
+      }
+    };
+  }
+  static busterShip(
+    image?: HTMLImageElement
+  ): undefined | HTMLImageElement | RenderableImageWithAnimation | RenderImage {
+    if (!image) return;
+
+    return {
+      image: image,
+      clipSize: vec2.fromValues(64, 64),
+      rotation: Math.PI / 2,
+      animations: {
+        thrust: {
+          framesPerSecond: 20,
+          image: image,
+          rotation: Math.PI / 2,
+          clipSize: vec2.fromValues(64, 64),
+          clipPosition: vec2.fromValues(0, 64),
+          frameSpacing: vec2.fromValues(0, 64),
+          frames: 9,
+          repeatMethod: "loop",
+          getFrame: (animFrame: number) => {
+            if (animFrame < 6) return animFrame;
+            return 6 + ((animFrame - 6) % 3);
+          }
+        },
+        destroy: {
+          framesPerSecond: 20,
+          image: image,
+          rotation: Math.PI / 2,
+          clipSize: vec2.fromValues(64, 64),
+          clipPosition: vec2.fromValues(64, 0),
+          frameSpacing: vec2.fromValues(0, 64),
+          frames: 5
+        }
+      }
+    };
   }
 
   static from(owner: Player, resources: Resources, sObj: SerializedShip): Ship {
-    const shipImage = resources.get("ship")?.image;
-    const ship = new Ship(owner, {
-      ...(shipImage
-        ? {
-            image: {
-              image: shipImage,
-              clipSize: vec2.fromValues(50, 50),
-              rotation: Math.PI / 2,
-              animations: {
-                thrust: {
-                  framesPerSecond: 10,
-                  image: shipImage,
-                  rotation: Math.PI / 2,
-                  clipSize: vec2.fromValues(50, 50),
-                  clipPosition: vec2.fromValues(0, 50),
-                  frameSpacing: vec2.fromValues(0, 50),
-                  frames: 9,
-                  repeatMethod: "loop"
-                }
-              }
-            }
-          }
-        : {})
-    });
+    const shipImage = resources.get(sObj.shipType)?.image;
+    const shipImageFn = {
+      deltaship: Ship.deltaShip,
+      sweepship: Ship.sweepShip,
+      bustership: Ship.busterShip
+    }[sObj.shipType];
+    const image = !shipImage ? null : shipImageFn(shipImage);
+    const ship = new Ship(owner, image ? { image } : {});
     ship._id = sObj.id;
     ship.deserialize(sObj);
     return ship;

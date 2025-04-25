@@ -13,4 +13,13 @@ export default class Player extends PlayerBase {
 
     this.socket = socket;
   }
+
+  disconnect() {
+    if (this.ship) {
+      this.game.removeGameObject(this.ship);
+    }
+
+    this.game.removeGameObject(this);
+    console.log("Player Disconnected");
+  }
 }

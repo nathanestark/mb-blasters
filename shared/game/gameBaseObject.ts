@@ -1,15 +1,5 @@
 import { vec2 } from "gl-matrix";
-import {
-  CircleCollider,
-  CircleCollidable,
-  Math2D,
-  GameObject2D,
-  Collidable,
-  Collider,
-  CircleColliderResult,
-  ColliderResult,
-  GameObject
-} from "star-engine";
+import { Math2D, GameObject2D, GameObject } from "star-engine";
 import {
   NetworkObject,
   SerializedVec2,
@@ -26,8 +16,8 @@ export interface SerializedGameBaseObject extends NetworkObject {
   rotation: number;
   radius: number;
   mass: number;
-  elasticity: number;
   minSpeed: number;
+  maxSpeed?: number;
 }
 
 export interface GameBaseObjectProperties {
@@ -36,13 +26,13 @@ export interface GameBaseObjectProperties {
   rotation?: number;
   radius?: number;
   mass?: number;
-  elasticity?: number;
   minSpeed?: number;
+  maxSpeed?: number;
 }
 
 export default class GameBaseObject
   extends GameObject
-  implements GameObject2D, CircleCollidable, NetworkSerializable, NetworkDeserializable
+  implements GameObject2D, NetworkSerializable, NetworkDeserializable
 {
   position: vec2 = vec2.create();
   velocity: vec2 = vec2.create();
@@ -50,13 +40,11 @@ export default class GameBaseObject
   rotation: number = 0;
   radius: number = 1;
   mass: number = 1;
-  elasticity: number = 1;
   minSpeed: number = 0.1;
+  maxSpeed?: number;
   removed: boolean = false;
 
   classTags: Array<string> = [];
-
-  _collider: CircleCollider;
 
   constructor({
     position,
@@ -64,8 +52,8 @@ export default class GameBaseObject
     rotation,
     radius,
     mass,
-    elasticity,
-    minSpeed
+    minSpeed,
+    maxSpeed
   }: GameBaseObjectProperties = {}) {
     super();
 
@@ -76,18 +64,15 @@ export default class GameBaseObject
     if (typeof rotation == "number") this.rotation = rotation;
     if (typeof radius == "number") this.radius = radius;
     if (typeof mass == "number") this.mass = mass;
-    if (typeof elasticity == "number") this.elasticity = elasticity;
     if (typeof minSpeed == "number") this.minSpeed = minSpeed;
-
-    // Add a collider as a child.
-    this._collider = new CircleCollider(this);
-
-    this.children = [this._collider];
+    if (typeof maxSpeed == "number") this.maxSpeed = maxSpeed;
   }
 
   update(tDelta: number) {
     // Apply our total force to our velocity.
-    vec2.scale(this.totalForce, this.totalForce, tDelta / this.mass);
+    if (this.mass > 0) {
+      vec2.scale(this.totalForce, this.totalForce, tDelta / this.mass);
+    }
     vec2.add(this.velocity, this.velocity, this.totalForce);
 
     let sqrSpeed = vec2.sqrLen(this.velocity);
@@ -96,6 +81,11 @@ export default class GameBaseObject
       vec2.set(this.velocity, 0, 0);
       sqrSpeed = 0;
     }
+    // Or above
+    else if (typeof this.maxSpeed !== "undefined" && sqrSpeed > this.maxSpeed * this.maxSpeed) {
+      // Cap our speed.
+      vec2.scale(this.velocity, vec2.normalize(this.velocity, this.velocity), this.maxSpeed);
+    }
 
     // Apply our velocity to our position, but don't destroy velocity.
     if (sqrSpeed > 0) {
@@ -103,85 +93,13 @@ export default class GameBaseObject
       vec2.scale(vel, vel, tDelta);
       vec2.add(this.position, this.position, vel);
     }
+
     // Reset force.
     this.totalForce = vec2.create();
   }
 
-  onCollision(thisObj: ColliderResult, otherObj: ColliderResult) {
-    if (this.removed) return;
-
-    const cThisObj = thisObj as CircleColliderResult;
-
-    //collider: collider1,
-    //parent: collider1.parent,
-    //position: pos1,
-    //normal: norm1,
-    //velocity: vec2.clone(collider1.velocity),
-    //timeLeft: t,
-    //radius: collider1.radius,
-
-    const normal = cThisObj.normal;
-
-    // On collision, we want to bounce.
-    const temp = vec2.create();
-
-    const cOtherObj = otherObj as CircleColliderResult;
-
-    if (otherObj && otherObj.owner instanceof GameBaseObject) {
-      const gbOtherOwner = otherObj.owner as GameBaseObject;
-
-      // Calculate new velocity for after the collision, and update our velocity.
-      Math2D.calculateElasticCollisionVelocity(
-        this.velocity,
-        this.velocity,
-        normal,
-        this.elasticity * gbOtherOwner.elasticity,
-        cThisObj.velocity,
-        this.mass,
-        cOtherObj.velocity,
-        gbOtherOwner.mass
-      );
-    } else {
-      Math2D.calculateElasticCollisionVelocity(
-        this.velocity,
-        this.velocity,
-        normal,
-        this.elasticity,
-        cThisObj.velocity,
-        this.mass
-      );
-    }
-
-    // Finally calculate new position based off of collision position,
-    // new velocity and negated timeLeft.
-    vec2.scale(temp, this.velocity, cThisObj.timeLeft);
-    vec2.add(this.position, cThisObj.position, temp);
-  }
-
-  onCollided(thisObj: ColliderResult, otherObj: ColliderResult) {
-    if (this.removed || (otherObj.owner as GameBaseObject).removed) return;
-
-    const cThisObj = thisObj as CircleColliderResult;
-
-    if (otherObj.owner instanceof GameBaseObject) {
-      const cOtherObj = otherObj as CircleColliderResult;
-      const minDist = cThisObj.radius + cOtherObj.radius + Number.EPSILON;
-
-      // As a last check, we need to make sure that despite all this, the two objects
-      // are not on top of each other.
-      if (vec2.sqrDist(this.position, cOtherObj.position) <= minDist * minDist) {
-        const temp = vec2.create();
-        vec2.sub(temp, this.position, cOtherObj.position);
-        const amt = minDist - vec2.length(temp);
-        vec2.normalize(temp, temp);
-
-        vec2.scale(temp, temp, amt);
-        vec2.add(this.position, this.position, temp);
-      }
-    }
-  }
-
-  serialize(): SerializedGameBaseObject {
+  serialize(): SerializedGameBaseObject | null {
+    if (this.removed) return null;
     return {
       type: "GameBaseObject", // Should get overwritten
       id: this.id,
@@ -192,8 +110,8 @@ export default class GameBaseObject
       rotation: this.rotation,
       radius: this.radius,
       mass: this.mass,
-      elasticity: this.elasticity,
-      minSpeed: this.minSpeed
+      minSpeed: this.minSpeed,
+      maxSpeed: this.maxSpeed
     };
   }
 
@@ -210,7 +128,7 @@ export default class GameBaseObject
     this.rotation = pObj.rotation;
     this.radius = pObj.radius;
     this.mass = pObj.mass;
-    this.elasticity = pObj.elasticity;
     this.minSpeed = pObj.minSpeed;
+    this.maxSpeed = pObj.maxSpeed;
   }
 }

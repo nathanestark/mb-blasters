@@ -2,7 +2,7 @@ import { vec2 } from "gl-matrix";
 import { GameObject } from "star-engine";
 
 export interface NetworkSerializable extends GameObject {
-  serialize: () => NetworkObject;
+  serialize: () => NetworkObject | null;
 }
 
 export interface NetworkDeserializable extends GameObject {

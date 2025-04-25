@@ -37,8 +37,7 @@ export const handleConnection = (game: Game) => (socket: Socket) => {
       }
     });
     socket.on("disconnect", () => {
-      game.removeGameObject(player);
-      console.log("Player Disconnected");
+      player.disconnect();
     });
   })();
 };
@@ -72,6 +71,10 @@ export const fire = (game: Game, player: Player, on: boolean) => {
   if (!player.ship) return;
   player.ship.fire(on);
 };
+export const special = (game: Game, player: Player, on: boolean) => {
+  if (!player.ship) return;
+  player.ship.special(on);
+};
 
 const MESSAGE_HANDLERS: Record<string, (game: Game, ...args: Array<any>) => void> = {
   updatePlayer,
@@ -79,5 +82,6 @@ const MESSAGE_HANDLERS: Record<string, (game: Game, ...args: Array<any>) => void
   rotateCounterClockwise,
   rotateClockwise,
   thrust,
-  fire
+  fire,
+  special
 };

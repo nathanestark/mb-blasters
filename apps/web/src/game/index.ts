@@ -23,7 +23,7 @@ interface GameProperties extends GameBaseProperties {}
 
 export default class Game extends GameBase {
   player?: number;
-  ship?: number;
+  ship: number | null = null;
   primaryCamera?: DefaultCamera;
   socket: Socket;
   resources: Resources;
@@ -34,6 +34,16 @@ export default class Game extends GameBase {
   ships: Container;
   cameras: Container;
   centeredHud: Container;
+
+  shipConfiguration: ShipConfiguration = {
+    type: "bustership",
+    special: "shield",
+    bulletSpeed: 500,
+    maxThrust: 3000,
+    maxRotate: 0.04,
+    maxSpeed: 600,
+    specialPower: 50
+  };
 
   constructor(socket: Socket, { ...superProps }: GameProperties = {}) {
     // Limit our client's ID range from half of max to max.
@@ -74,40 +84,15 @@ export default class Game extends GameBase {
     // Set up controllers
     this.controller = new InputController();
     this.addInputController(this.controller);
-
-    this.controller.registerDevice(
-      "keyboard",
-      (triggerCall) => {
-        document.addEventListener("keydown", triggerCall);
-        document.addEventListener("keyup", triggerCall);
-      },
-      (event: KeyboardEvent) => {
-        return {
-          key: event.key,
-          value: event.type == "keydown"
-        };
-      }
-    );
-
-    this.controller.registerDevice(
-      "mouse",
-      (triggerCall) => {
-        document.addEventListener("mousedown", triggerCall);
-        document.addEventListener("mouseup", triggerCall);
-      },
-      (event: MouseEvent) => {
-        return {
-          key: `${event.button}`,
-          value: event.type == "mousedown"
-        };
-      }
-    );
   }
 
   async load() {
     await this.resources.load([
       { type: "image", path: "images/asteroid.png", names: ["asteroid"] },
-      { type: "image", path: "images/ships.png", names: ["ship"] }
+      { type: "image", path: "images/ship1.png", names: ["deltaship"] },
+      { type: "image", path: "images/ship2.png", names: ["sweepship"] },
+      { type: "image", path: "images/ship3.png", names: ["bustership"] },
+      { type: "image", path: "images/explosion1.png", names: ["shipexplosion"] }
     ]);
   }
 
@@ -137,7 +122,42 @@ export default class Game extends GameBase {
     this.addGameObject(this.primaryCamera, this.cameras);
   }
 
-  startGame() {
+  registerInput(element: HTMLElement) {
+    this.controller.registerDevice(
+      "keyboard",
+      (triggerCall) => {
+        element.addEventListener("keydown", triggerCall);
+        element.addEventListener("keyup", triggerCall);
+      },
+      (event: KeyboardEvent) => {
+        return {
+          key: event.key.toLowerCase(),
+          value: event.type == "keydown"
+        };
+      }
+    );
+
+    this.controller.registerDevice(
+      "mouse",
+      (triggerCall) => {
+        element.addEventListener("mousedown", triggerCall);
+        element.addEventListener("mouseup", triggerCall);
+      },
+      (event: MouseEvent) => {
+        return {
+          key: `${event.button}`,
+          value: event.type == "mousedown"
+        };
+      }
+    );
+  }
+
+  start() {
+    super.start();
+    this.allowSpawn();
+  }
+
+  allowSpawn() {
     const fireMsg = new TextHud({
       textSize: 40,
       textColor: "#f00",
@@ -168,113 +188,139 @@ export default class Game extends GameBase {
     if (!on || this.ship) return;
 
     // Add player ship.
-    const configuration: ShipConfiguration = {};
-    console.log("spawnShip Socket", this.socket.id);
-    this.socket.emit("spawnShip", configuration);
+    console.log("Spawning", this.shipConfiguration);
+    this.socket.emit("spawnShip", this.shipConfiguration);
   }
   playerShipSpawned(ship: Ship) {
     console.log("Ship Spawned");
     this.ship = ship.id;
     if (this.primaryCamera) this.primaryCamera.target = ship;
 
-    this.controller.bindCommand({ device: "mouse", key: "0" }, CONTROLLER_ACTION, (on: boolean) => {
+    const fire = (on: boolean) => {
       this.socket.emit("fire", on);
-    });
-    this.controller.bindCommand(
-      { device: "keyboard", key: "w" },
-      CONTROLLER_ACTION,
-      (on: boolean) => {
-        this.socket.emit("thrust", on);
-      }
-    );
+    };
+    const special = (on: boolean) => {
+      this.socket.emit("special", on);
+    };
+    const thrust = (on: boolean) => {
+      this.socket.emit("thrust", on);
+    };
+    const rotateCounterClockwise = (on: boolean) => {
+      this.socket.emit("rotateCounterClockwise", on);
+    };
+    const rotateClockwise = (on: boolean) => this.socket.emit("rotateClockwise", on);
+
+    this.controller.bindCommand({ device: "mouse", key: "0" }, CONTROLLER_ACTION, fire);
+    this.controller.bindCommand({ device: "keyboard", key: " " }, CONTROLLER_ACTION, fire);
+    this.controller.bindCommand({ device: "keyboard", key: "shift" }, CONTROLLER_ACTION, special);
+    this.controller.bindCommand({ device: "keyboard", key: "w" }, CONTROLLER_ACTION, thrust);
     this.controller.bindCommand(
       { device: "keyboard", key: "a" },
       CONTROLLER_ACTION,
-      (on: boolean) => {
-        this.socket.emit("rotateCounterClockwise", on);
-      }
+      rotateCounterClockwise
     );
     this.controller.bindCommand(
       { device: "keyboard", key: "d" },
       CONTROLLER_ACTION,
-      (on: boolean) => this.socket.emit("rotateClockwise", on)
+      rotateClockwise
     );
 
-    // destroy = () => {
-    //   this.ship = null;
-    //   this.cLives--;
-    //   this.lives.text = "Lives: " + this.cLives;
+    const destroying = () => {
+      ship.off("destroying", destroying);
 
-    //   this.controller.unbindCommand({ device: "mouse", key: "0" }, CONTROLLER_ACTION, fire);
-    //   this.controller.unbindCommand({ device: "keyboard", key: "w" }, CONTROLLER_ACTION, thrust);
-    //   this.controller.unbindCommand(
-    //     { device: "keyboard", key: "a" },
-    //     CONTROLLER_ACTION,
-    //     rotateCounterClockwise
-    //   );
-    //   this.controller.unbindCommand(
-    //     { device: "keyboard", key: "d" },
-    //     CONTROLLER_ACTION,
-    //     rotateClockwise
-    //   );
+      if (this.primaryCamera) {
+        console.log("Remove camera");
+        delete this.primaryCamera.target;
+      }
+    };
+    ship.on("destroying", destroying);
 
-    //   if (this.cLives > 0) {
-    //     setTimeout(() => {
-    //       const fireMsg = new TextHud({
-    //         textSize: 40,
-    //         textColor: "#f00",
-    //         text: "Press Fire to Spawn",
-    //         justify: "center",
-    //         position: vec2.fromValues(0, 0)
-    //       });
-    //       this.addGameObject(fireMsg, this.centeredHud).then(() => {
-    //         const fireToSpawn = (on: boolean) => {
-    //           if (on) {
-    //             this.removeGameObject(fireMsg);
-    //             this.controller.unbindCommand(
-    //               { device: "mouse", key: "0" },
-    //               CONTROLLER_ACTION,
-    //               fireToSpawn
-    //             );
+    const destroyed = () => {
+      ship.off("destroyed", destroyed);
+      this.ship = null;
+      // this.cLives--;
+      // this.lives.text = "Lives: " + this.cLives;
 
-    //             this.spawnShip(on);
-    //           }
-    //         };
+      // Clear the camera target if this was us.
 
-    //         this.controller.bindCommand(
-    //           { device: "mouse", key: "0" },
-    //           CONTROLLER_ACTION,
-    //           fireToSpawn
-    //         );
-    //       });
-    //     }, 1000);
-    //   } else {
-    //     clearInterval(this.spawnInterval);
-    //     // Show game over.
-    //     const gameOver = new TextHud({
-    //       textSize: 40,
-    //       textColor: "#f00",
-    //       text: "Game Over",
-    //       justify: "center",
-    //       position: vec2.fromValues(0, 0)
-    //     });
-    //     this.addGameObject(gameOver, this.centeredHud).then((obj) => {
-    //       let restart: () => void = null;
-    //       restart = () => {
-    //         this.removeGameObject(obj);
-    //         this.controller.unbindCommand(
-    //           { device: "mouse", key: "0" },
-    //           CONTROLLER_ACTION,
-    //           restart
-    //         );
+      this.controller.unbindCommand({ device: "mouse", key: "0" }, CONTROLLER_ACTION, fire);
+      this.controller.unbindCommand({ device: "keyboard", key: " " }, CONTROLLER_ACTION, fire);
+      this.controller.unbindCommand(
+        { device: "keyboard", key: "shift" },
+        CONTROLLER_ACTION,
+        special
+      );
+      this.controller.unbindCommand({ device: "keyboard", key: "w" }, CONTROLLER_ACTION, thrust);
+      this.controller.unbindCommand(
+        { device: "keyboard", key: "a" },
+        CONTROLLER_ACTION,
+        rotateCounterClockwise
+      );
+      this.controller.unbindCommand(
+        { device: "keyboard", key: "d" },
+        CONTROLLER_ACTION,
+        rotateClockwise
+      );
 
-    //         this.startGame();
-    //       };
-    //       setTimeout(() => {
-    //         this.controller.bindCommand({ device: "mouse", key: "0" }, CONTROLLER_ACTION, restart);
-    //       }, 1000);
-    //     });
-    //   }
-    // };
+      // if (this.cLives > 0) {
+      setTimeout(() => {
+        this.allowSpawn();
+        // const fireMsg = new TextHud({
+        //   textSize: 40,
+        //   textColor: "#f00",
+        //   text: "Press Fire to Spawn",
+        //   justify: "center",
+        //   position: vec2.fromValues(0, 0)
+        // });
+        // this.addGameObject(fireMsg, this.centeredHud).then(() => {
+        //   const fireToSpawn = (on: boolean) => {
+        //     if (on) {
+        //       this.removeGameObject(fireMsg);
+        //       this.controller.unbindCommand(
+        //         { device: "mouse", key: "0" },
+        //         CONTROLLER_ACTION,
+        //         fireToSpawn
+        //       );
+
+        //       this.spawnShip(on);
+        //     }
+        //   };
+
+        //   this.controller.bindCommand(
+        //     { device: "mouse", key: "0" },
+        //     CONTROLLER_ACTION,
+        //     fireToSpawn
+        //   );
+        // });
+      }, 1000);
+      // } else {
+      //   clearInterval(this.spawnInterval);
+      //   // Show game over.
+      //   const gameOver = new TextHud({
+      //     textSize: 40,
+      //     textColor: "#f00",
+      //     text: "Game Over",
+      //     justify: "center",
+      //     position: vec2.fromValues(0, 0)
+      //   });
+      //   this.addGameObject(gameOver, this.centeredHud).then((obj) => {
+      //     let restart: () => void = null;
+      //     restart = () => {
+      //       this.removeGameObject(obj);
+      //       this.controller.unbindCommand(
+      //         { device: "mouse", key: "0" },
+      //         CONTROLLER_ACTION,
+      //         restart
+      //       );
+
+      //       this.startGame();
+      //     };
+      //     setTimeout(() => {
+      //       this.controller.bindCommand({ device: "mouse", key: "0" }, CONTROLLER_ACTION, restart);
+      //     }, 1000);
+      //   });
+      // }
+    };
+    ship.on("destroyed", destroyed);
   }
 }

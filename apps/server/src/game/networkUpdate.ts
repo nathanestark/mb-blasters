@@ -1,6 +1,6 @@
 import { GameObject } from "star-engine";
 import Game from "./index";
-import { NetworkSerializable, NetworkUpdateData } from "@shared/game/network";
+import { NetworkObject, NetworkSerializable, NetworkUpdateData } from "@shared/game/network";
 
 export interface NetworkUpdateProperties {
   minUpdateTime?: number;
@@ -29,7 +29,12 @@ export default class NetworkUpdate extends GameObject {
 
   issueNetworkUpdate() {
     const objs = this.game.filter("network") as Array<NetworkSerializable>;
-    const sObjs = objs.map((obj) => obj.serialize());
+    const sObjs = objs.reduce((memo, obj) => {
+      const sObj = obj.serialize();
+      if (!sObj) return memo;
+
+      return [...memo, sObj];
+    }, [] as Array<NetworkObject>);
 
     const data: NetworkUpdateData = {
       timestamp: Date.now(),
