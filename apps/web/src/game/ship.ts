@@ -1,6 +1,10 @@
 import { vec2, vec3, quat } from "gl-matrix";
 import { RefreshTime, Resources } from "star-engine";
-import ShipBase, { ShipProperties as ShipBaseProperties, SerializedShip } from "@shared/game/ship";
+import ShipBase, {
+  ShipProperties as ShipBaseProperties,
+  SerializedShip,
+  OnOffEventContext
+} from "@shared/game/ship";
 import Bullet from "@shared/game/bullet";
 import Player from "./player";
 import GameBaseObjectRenderer, {
@@ -41,11 +45,15 @@ export default class Ship extends ShipBase {
   }
 
   thrust(on: boolean) {
-    if (!!this._thrust != on) {
-      if (on) {
-        this._renderer.startAnimation("thrust");
-      } else {
-        this._renderer.stopAnimation();
+    const context: OnOffEventContext = { on, cancel: false };
+    this._emitter.emit("thrust", this, context);
+    if (!context.cancel) {
+      if (!!this._thrust != on) {
+        if (on) {
+          this._renderer.startAnimation("thrust");
+        } else {
+          this._renderer.stopAnimation();
+        }
       }
     }
   }

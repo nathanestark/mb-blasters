@@ -185,30 +185,40 @@ export default class Ship extends GameBaseObject {
   }
 
   fire(on: boolean) {
+    if (this.removed || this._destroying) return;
+
     const context: OnOffEventContext = { on, cancel: false };
     this._emitter.emit("fire", this, context);
     if (!context.cancel) this._firing = on;
   }
 
   thrust(on: boolean) {
+    if (this.removed || this._destroying) return;
+
     const context: OnOffEventContext = { on, cancel: false };
     this._emitter.emit("thrust", this, context);
     if (!context.cancel) this._thrust = on ? this._maxThrust : 0;
   }
 
   rotateCounterClockwise(on: boolean) {
+    if (this.removed || this._destroying) return;
+
     const context: OnOffEventContext = { on, cancel: false };
     this._emitter.emit("rotateCounterClockwise", this, context);
     if (!context.cancel) this._rotate = on ? -this._maxRotate : 0;
   }
 
   rotateClockwise(on: boolean) {
+    if (this.removed || this._destroying) return;
+
     const context: OnOffEventContext = { on, cancel: false };
     this._emitter.emit("rotateClockwise", this, context);
     if (!context.cancel) this._rotate = on ? this._maxRotate : 0;
   }
 
   special(on: boolean) {
+    if (this.removed || this._destroying) return;
+
     const context: OnOffEventContext = { on, cancel: false };
     this._emitter.emit("special", this, context);
     if (!context.cancel) {

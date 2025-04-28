@@ -157,7 +157,7 @@ export default class Game extends GameBase {
     this.allowSpawn();
   }
 
-  allowSpawn() {
+  async allowSpawn() {
     const fireMsg = new TextHud({
       textSize: 40,
       textColor: "#f00",
@@ -165,7 +165,7 @@ export default class Game extends GameBase {
       justify: "center",
       position: vec2.fromValues(0, 0)
     });
-    this.addGameObject(fireMsg, this.centeredHud);
+    await this.addGameObject(fireMsg, this.centeredHud);
 
     const fireToSpawn = (on: boolean) => {
       if (on) {
