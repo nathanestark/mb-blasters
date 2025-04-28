@@ -58,6 +58,7 @@ module.exports = {
     open: true,
     hot: true,
     historyApiFallback: true,
+    allowedHosts: "all",
     proxy: [
       {
         context: ["/api/v1/stream"],

@@ -32,8 +32,8 @@ export default class Game extends GameBase {
     this._players = new Container();
 
     this._worldBounds = new WorldBounds({
-      position: vec2.fromValues(-500, -500),
-      size: vec2.fromValues(1000, 1000)
+      position: vec2.fromValues(-1000, -500),
+      size: vec2.fromValues(2000, 1000)
     });
 
     this._collidables = new Container();
