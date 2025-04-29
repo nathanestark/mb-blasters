@@ -26,7 +26,12 @@ export default class Explosion extends ExplosionBase {
   }
 
   draw(camera: DefaultCamera, time: RefreshTime) {
+    camera.saveState();
+    camera.context.translate(this.position[0], this.position[1]);
+    camera.context.rotate(this.rotation);
+
     this._renderer.draw(camera, time);
+    camera.restoreState();
   }
   static shipExplosion(
     image?: HTMLImageElement

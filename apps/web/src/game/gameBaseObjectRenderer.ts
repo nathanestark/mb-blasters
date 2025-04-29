@@ -197,8 +197,12 @@ export default class GameBaseObjectRenderer {
     }
   }
 
-  drawImage(camera: DefaultCamera, image: RenderableImage) {
-    camera.context.save();
+  drawImage(
+    _camera: DefaultCamera,
+    context: OffscreenCanvasRenderingContext2D,
+    image: RenderableImage
+  ) {
+    context.save();
 
     const offsetSize = image.offsetSize || [0, 0];
     const offsetPosition = image.offsetPosition || [0, 0];
@@ -208,13 +212,13 @@ export default class GameBaseObjectRenderer {
     const diam = this.object.radius * 2;
     const ratioX = diam / offsetSize[0];
     const ratioY = diam / offsetSize[1];
-    camera.context.rotate(image.rotation);
-    camera.context.translate(
+    context.rotate(image.rotation);
+    context.translate(
       -(this.object.radius + offsetPosition[0] * ratioX),
       -(this.object.radius + offsetPosition[1] * ratioY)
     );
 
-    camera.context.drawImage(
+    context.drawImage(
       image.image,
       clipPosition[0],
       clipPosition[1],
@@ -226,7 +230,7 @@ export default class GameBaseObjectRenderer {
       clipSize[1] * ratioY
     );
 
-    camera.context.restore();
+    context.restore();
   }
 
   _getFrame(image: RenderImage, curAnimation: RenderAnimation, animationTime: number) {
@@ -243,25 +247,28 @@ export default class GameBaseObjectRenderer {
     return curAnimation.frames[frame];
   }
 
-  draw(camera: DefaultCamera, time: RefreshTime) {
-    camera.context.translate(this.object.position[0], this.object.position[1]);
-    camera.context.rotate(this.object.rotation);
+  draw(camera: DefaultCamera, time: RefreshTime, context?: OffscreenCanvasRenderingContext2D) {
+    if (!context) context = camera.context;
+
+    context.save();
 
     if (this.image) {
       if (this.image.curAnimation) {
         this.drawImage(
           camera,
+          context,
           this._getFrame(this.image, this.image.curAnimation, time.animationTime)
         );
       } else {
-        this.drawImage(camera, this.image);
+        this.drawImage(camera, context, this.image);
       }
     } else {
-      camera.context.fillStyle = this.color;
-      camera.context.beginPath();
+      context.fillStyle = this.color;
+      context.beginPath();
 
-      camera.context.arc(0, 0, this.object.radius, 0, Math2D.twoPi);
-      camera.context.fill();
+      context.arc(0, 0, this.object.radius, 0, Math2D.twoPi);
+      context.fill();
     }
+    context.restore();
   }
 }

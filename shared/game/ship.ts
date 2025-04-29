@@ -8,7 +8,7 @@ import GameBaseObject, {
 import { NetworkObject } from "./network";
 import Player from "./player";
 import Bullet from "./bullet";
-import { Special, SpecialType, None, Shield, SerializableSpecial } from "./specials/index";
+import { Special, SpecialType, None, Shield, SerializableSpecial, Warp } from "./specials/index";
 
 export type ShipType = "deltaship" | "sweepship" | "bustership";
 
@@ -289,6 +289,7 @@ export default class Ship extends GameBaseObject {
 
   createSpecial(type: SpecialType, power: number): Special {
     if (type == "shield") return new Shield(this, power);
+    else if (type == "warp") return new Warp(this, power);
     return new None(this, power);
   }
 

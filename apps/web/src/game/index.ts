@@ -92,7 +92,8 @@ export default class Game extends GameBase {
       { type: "image", path: "images/ship1.png", names: ["deltaship"] },
       { type: "image", path: "images/ship2.png", names: ["sweepship"] },
       { type: "image", path: "images/ship3.png", names: ["bustership"] },
-      { type: "image", path: "images/explosion1.png", names: ["shipexplosion"] }
+      { type: "image", path: "images/explosion1.png", names: ["shipexplosion"] },
+      { type: "image", path: "images/warp.png", names: ["warp"] }
     ]);
   }
 
