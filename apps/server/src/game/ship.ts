@@ -52,6 +52,8 @@ export default class Ship extends ShipBase {
   }
 
   fireNow() {
+    if (this._destroying) return;
+
     if (this._fireRecord >= 4) return;
     this._fireRecord++;
     setTimeout(() => {

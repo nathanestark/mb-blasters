@@ -1,6 +1,6 @@
 import { CircleColliderResult, ColliderResult } from "star-engine";
 import { NetworkObject } from "./network";
-import GameBaseObject, {
+import CollidableGameBaseObject, {
   CollidableGameBaseObjectProperties,
   SerializedCollidableGameBaseObject
 } from "./collidableGameBaseObject";
@@ -16,14 +16,14 @@ export interface BulletProperties extends CollidableGameBaseObjectProperties {
   color?: string;
 }
 
-export default class Bullet extends GameBaseObject {
-  owner: GameBaseObject;
+export default class Bullet extends CollidableGameBaseObject {
+  owner: CollidableGameBaseObject;
   _color: string = "#860";
 
-  constructor(owner: GameBaseObject, { color, ...superProps }: BulletProperties = {}) {
+  constructor(owner: CollidableGameBaseObject, { color, ...superProps }: BulletProperties = {}) {
     super({
       ...{
-        mass: 0.1,
+        mass: 0.5,
         radius: 3
       },
       ...superProps
@@ -36,23 +36,22 @@ export default class Bullet extends GameBaseObject {
   }
 
   onCollision(thisObj: ColliderResult, otherObj: ColliderResult) {
-    if (this.removed) return;
-
     const myParent = otherObj.owner && otherObj.owner == this.owner;
-    if (otherObj.owner instanceof GameBaseObject && myParent) return;
+    if (otherObj.owner instanceof CollidableGameBaseObject) {
+      // Ignore the collision if it is another bullet, or our parent.
+      const ignore = myParent || otherObj.owner instanceof Bullet;
+      if (!ignore) {
+        // Bullet should go away.
+        this.removed = true;
+        this._collider.canCollide = false;
+        this.game.removeGameObject(this);
+      }
+      // If we impact, or are ignoring, we don't need the 'onCollided' called.
+      thisObj.canceled = true;
+      return;
+    }
 
     super.onCollision(thisObj, otherObj);
-  }
-
-  onCollided(thisObj: CircleColliderResult, otherObj: ColliderResult) {
-    if (this.removed) return;
-
-    if (otherObj.owner instanceof GameBaseObject) {
-      this.removed = true;
-      this.game.removeGameObject(this);
-    } else {
-      super.onCollided(thisObj, otherObj);
-    }
   }
 
   serialize(): SerializedBullet | null {
@@ -75,7 +74,7 @@ export default class Bullet extends GameBaseObject {
 
     super.deserialize(obj);
 
-    if (this.active) this.owner = this.game.getGameObject(pObj.owner) as GameBaseObject;
+    if (this.active) this.owner = this.game.getGameObject(pObj.owner) as CollidableGameBaseObject;
     this._color = pObj.color;
   }
 }

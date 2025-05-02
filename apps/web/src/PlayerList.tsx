@@ -6,12 +6,18 @@ import Player from "@web/game/player";
 import styles from "./App.module.scss";
 
 const PlayerList: FC = () => {
-  const { game } = useGame();
+  const { getGame } = useGame();
 
   const players: Array<Player> = useMemo(() => {
+    const game = getGame();
     if (!game) return [];
-    return game.filter("player") as Array<Player>;
-  }, [game]);
+    return (game.players.children || []) as Array<Player>;
+  }, [getGame]);
+
+  const playerId = useMemo(() => {
+    const game = getGame();
+    return game?.player;
+  }, [getGame]);
 
   return (
     <div className={styles.playersList}>
@@ -20,7 +26,7 @@ const PlayerList: FC = () => {
         {players.map((player) => (
           <li key={player.id}>
             <span>{player.name}</span>
-            {player.id == game?.player && <span>{"(You)"}</span>}
+            {player.id == playerId && <span>{" (You)"}</span>}
           </li>
         ))}
       </ul>

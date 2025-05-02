@@ -16,6 +16,7 @@ import Game from "./index";
 import { SpecialType, Special } from "@shared/game/specials";
 import Shield from "./specials/shield";
 import Warp from "./specials/warp";
+import Grav from "./specials/grav";
 
 export { SerializedShip };
 
@@ -117,7 +118,9 @@ export default class Ship extends ShipBase {
 
   createSpecial(type: SpecialType, power: number): Special {
     if (type == "shield") return new Shield(this, power);
-    if (type == "warp") return new Warp(this, power);
+    else if (type == "warp") return new Warp(this, power);
+    else if (type == "grav") return new Grav(this, power);
+    else if (type == "antigrav") return new Grav(this, power, -1);
     return super.createSpecial(type, power);
   }
 

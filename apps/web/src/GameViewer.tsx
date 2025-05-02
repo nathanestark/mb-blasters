@@ -6,26 +6,30 @@ import Player from "@web/game/player";
 import styles from "./App.module.scss";
 
 const GameViewer: FC = () => {
-  const { game } = useGame();
+  const { getGame } = useGame();
   const [isCanvasValid, setIsCanvasValid] = useState(false);
+  const [inputRegistered, setInputRegistered] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const handelCanvasRef = useCallback(
     (canvas: HTMLCanvasElement) => {
+      const game = getGame();
       if (!canvas || !game) return;
 
       canvasRef.current = canvas;
       setIsCanvasValid(!canvas);
     },
-    [game]
+    [getGame]
   );
 
   useEffect(() => {
-    if (!canvasRef.current || !game) return;
+    const game = getGame();
+    if (!canvasRef.current || !game || inputRegistered) return;
 
     game.addCamera(canvasRef.current);
     game.registerInput(canvasRef.current);
-  }, [game, isCanvasValid]);
+    setInputRegistered(true);
+  }, [getGame, isCanvasValid, inputRegistered]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();

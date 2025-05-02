@@ -24,7 +24,7 @@ export default class Shield extends Special {
     this.owner.on("thrust", (ship: Ship, context: OnOffEventContext) => {
       context.cancel = context.on && this._on;
     });
-    this.owner.on("collided", (ship: Ship, context: CollisionEventContext) => {
+    this.owner.on("collision", (ship: Ship, context: CollisionEventContext) => {
       context.cancel = this._on;
       if (context.cancel) {
         let e = 0;

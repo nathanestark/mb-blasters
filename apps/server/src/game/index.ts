@@ -1,12 +1,13 @@
-import { vec2 } from "gl-matrix";
+import { quat, vec2, vec3 } from "gl-matrix";
 import { Server } from "socket.io";
 import GameBase, { GameProperties as GameBaseProperties } from "@shared/game/index";
 import WorldBounds from "@shared/game/worldBounds";
-import { CollisionDetection, Container } from "star-engine";
+import { CollisionDetection, Container, Math2D } from "star-engine";
 import Player from "./player";
 import NetworkUpdate from "./networkUpdate";
 import { ShipConfiguration } from "@shared/game/ship";
 import Ship from "./ship";
+import Asteroid from "@shared/game/asteroid";
 
 interface GameProperties extends GameBaseProperties {}
 
@@ -32,8 +33,8 @@ export default class Game extends GameBase {
     this._players = new Container();
 
     this._worldBounds = new WorldBounds({
-      position: vec2.fromValues(-1000, -500),
-      size: vec2.fromValues(2000, 1000)
+      position: vec2.fromValues(-2000, -1000),
+      size: vec2.fromValues(4000, 2000)
     });
 
     this._collidables = new Container();
@@ -58,6 +59,73 @@ export default class Game extends GameBase {
 
     // Then collider
     this.addGameObject(collisionDetection);
+
+    this.addSmallAsteroids();
+    this.addMediumAsteroids();
+    this.addLargeAsteroids();
+  }
+
+  addSmallAsteroids() {
+    let numAsteroids = 20;
+
+    for (let x = 0; x < numAsteroids; x++) {
+      this.addAsteroid(5, 5);
+    }
+  }
+  addMediumAsteroids() {
+    let numAsteroids = 10;
+
+    for (let x = 0; x < numAsteroids; x++) {
+      this.addAsteroid(20, 20);
+    }
+  }
+  addLargeAsteroids() {
+    let numAsteroids = 5;
+
+    for (let x = 0; x < numAsteroids; x++) {
+      this.addAsteroid(50, 50);
+    }
+  }
+
+  addAsteroid(mass: number, radius: number) {
+    const position3D = vec3.fromValues(
+      1,
+      this._worldBounds.size[0] / 2 - radius,
+      this._worldBounds.size[1] / 2 - radius
+    );
+    const rotQuat = quat.identity(quat.create());
+    quat.rotateZ(rotQuat, rotQuat, Math.random() * Math.PI * 2);
+    vec3.transformQuat(position3D, position3D, rotQuat);
+    const position = vec2.fromValues(position3D[0], position3D[1]);
+    // Make sure we are inside our boundaries
+    const spawnBox = Math2D.inflateBoundingBox(
+      [
+        this._worldBounds.position,
+        vec2.add(vec2.create(), this._worldBounds.position, this._worldBounds.size)
+      ],
+      -radius
+    );
+
+    vec2.max(position, position, spawnBox[0]);
+    vec2.min(position, position, spawnBox[1]);
+
+    this.addGameObject(
+      new Asteroid({
+        radius: radius,
+        mass: mass,
+        position: position,
+        // image: this.resources.get("asteroid").image,
+        velocity: vec2.fromValues(
+          (1000 / mass) * (1 - Math.random() * 2),
+          (1000 / mass) * (1 - Math.random() * 2)
+        ),
+
+        color: "white"
+        // onDestroyed: (obj: Asteroid) => {
+        //     destroy(obj);
+        // }
+      })
+    );
   }
 
   async addPlayer(player: Player): Promise<Player> {

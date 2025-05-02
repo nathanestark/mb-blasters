@@ -1,14 +1,22 @@
 import { EventEmitter } from "events";
 import { vec2, vec3, quat } from "gl-matrix";
 import { CircleColliderResult, ColliderResult } from "star-engine";
-import GameBaseObject, {
+import CollidableGameBaseObject, {
   CollidableGameBaseObjectProperties,
   SerializedCollidableGameBaseObject
 } from "./collidableGameBaseObject";
 import { NetworkObject } from "./network";
 import Player from "./player";
 import Bullet from "./bullet";
-import { Special, SpecialType, None, Shield, SerializableSpecial, Warp } from "./specials/index";
+import {
+  Special,
+  SpecialType,
+  SerializableSpecial,
+  None,
+  Shield,
+  Warp,
+  Grav
+} from "./specials/index";
 
 export type ShipType = "deltaship" | "sweepship" | "bustership";
 
@@ -62,7 +70,7 @@ export interface ShipProperties extends CollidableGameBaseObjectProperties {
   specialPower?: number;
 }
 
-export default class Ship extends GameBaseObject {
+export default class Ship extends CollidableGameBaseObject {
   owner: Player;
 
   _color: string = "#F00";
@@ -128,7 +136,7 @@ export default class Ship extends GameBaseObject {
       | "rotateCounterClockwise"
       | "rotateClockwise"
       | "special"
-      | "colliding"
+      | "collision"
       | "collided",
     listener: (ship: Ship, context: T) => void
   ) {
@@ -143,6 +151,7 @@ export default class Ship extends GameBaseObject {
       | "rotateCounterClockwise"
       | "rotateClockwise"
       | "special"
+      | "collision"
       | "collided",
     listener: (ship: Ship, context: T) => void
   ) {
@@ -157,6 +166,7 @@ export default class Ship extends GameBaseObject {
       | "rotateCounterClockwise"
       | "rotateClockwise"
       | "special"
+      | "collision"
       | "collided",
     listener: (ship: Ship, context: T) => void
   ) {
@@ -172,6 +182,7 @@ export default class Ship extends GameBaseObject {
     this._thrust = 0;
     this._rotate = 0;
     this._special.off();
+    this._collider.canCollide = false;
 
     setTimeout(() => this.destroyed(), DESTROY_TIME);
   }
@@ -252,44 +263,40 @@ export default class Ship extends GameBaseObject {
   }
 
   onCollision(thisObj: ColliderResult, otherObj: ColliderResult) {
-    if (this._destroying || this.removed) {
-      thisObj.canceled = true;
-      return;
-    }
-
     // Nothing happens if it is our bullet.
     const myBullet = otherObj.owner instanceof Bullet && otherObj.owner.owner == this;
-    if (otherObj.owner instanceof GameBaseObject && myBullet) {
+    if (otherObj.owner instanceof CollidableGameBaseObject && myBullet) {
       thisObj.canceled = true;
       return;
     }
 
-    // If they're destroyed or removed, don't let us collide.
-    const otherShipDead =
-      otherObj.owner instanceof Ship && (otherObj.owner.removed || otherObj.owner._destroying);
-    if (otherShipDead) {
-      thisObj.canceled = true;
-      return;
-    }
-
+    // Handle natural collision (updating velocity, etc)
     super.onCollision(thisObj, otherObj);
-  }
-  onCollided(thisObj: CircleColliderResult, otherObj: ColliderResult) {
-    if (this._destroying || this.removed) return;
 
+    const context = { thisObj, otherObj, cancel: false };
+    this._emitter.emit("collision", this, context);
+
+    if (!context.cancel && otherObj.owner instanceof CollidableGameBaseObject) {
+      // Any collision destroys our ship.
+      this.destroy();
+    }
+  }
+
+  onCollided(thisObj: CircleColliderResult, otherObj: ColliderResult) {
     const context = { thisObj, otherObj, cancel: false };
     this._emitter.emit("collided", this, context);
 
-    if (!context.cancel && otherObj.owner instanceof GameBaseObject) {
-      this.destroy();
-    } else {
-      super.onCollided(thisObj, otherObj);
-    }
+    // If we're destroyed, don't adjust overlap.
+    if (this._destroying) return;
+
+    super.onCollided(thisObj, otherObj);
   }
 
   createSpecial(type: SpecialType, power: number): Special {
     if (type == "shield") return new Shield(this, power);
     else if (type == "warp") return new Warp(this, power);
+    else if (type == "grav") return new Grav(this, power);
+    else if (type == "antigrav") return new Grav(this, power, -1);
     return new None(this, power);
   }
 

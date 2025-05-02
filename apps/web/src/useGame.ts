@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useMemo } from "react";
+import { createContext, useContext, useEffect, useState, useMemo, useCallback } from "react";
 import Game from "./game";
 
 export interface IGameContext {
@@ -10,7 +10,7 @@ export const GameContext = createContext<IGameContext>({ game: null });
 const useGame = (
   updateTime: number = 1000
 ): {
-  game: Game | null;
+  getGame: () => Game | null;
 } => {
   const [updateFromGame, setUpdateFromGame] = useState(0);
   const context = useContext<IGameContext>(GameContext);
@@ -20,10 +20,12 @@ const useGame = (
     return () => clearInterval(to);
   }, [updateTime]);
 
-  const game: Game | null = useMemo(() => context.game, [context, updateFromGame]);
+  const getGame = useCallback(() => {
+    return context.game;
+  }, [context, updateFromGame]);
 
   return {
-    game
+    getGame
   };
 };
 

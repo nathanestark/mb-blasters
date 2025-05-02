@@ -4,17 +4,29 @@ import {
   CircleCollidable,
   Math2D,
   GameObject2D,
+  Collidable,
+  Collider,
   CircleColliderResult,
-  ColliderResult
+  ColliderResult,
+  GameObject
 } from "star-engine";
-import { NetworkObject, NetworkSerializable, NetworkDeserializable } from "./network";
+import {
+  NetworkObject,
+  SerializedVec2,
+  NetworkSerializable,
+  NetworkDeserializable,
+  serializeVec2,
+  deserializeVec2
+} from "./network";
 import GameBaseObject, {
   SerializedGameBaseObject,
   GameBaseObjectProperties
 } from "./gameBaseObject";
+// import Bullet from "./bullet";
 
 export interface SerializedCollidableGameBaseObject extends SerializedGameBaseObject {
   elasticity: number;
+  canCollide: boolean;
 }
 
 export interface CollidableGameBaseObjectProperties extends GameBaseObjectProperties {
@@ -28,6 +40,7 @@ export default class CollidableGameBaseObject
   elasticity: number = 1;
 
   _collider: CircleCollider;
+  canCollide: boolean = true;
 
   constructor({ elasticity, ...superProps }: CollidableGameBaseObjectProperties = {}) {
     super(superProps);
@@ -43,6 +56,8 @@ export default class CollidableGameBaseObject
   }
 
   onCollision(thisObj: ColliderResult, otherObj: ColliderResult) {
+    if (this.removed || !this.canCollide) return;
+
     const cThisObj = thisObj as CircleColliderResult;
 
     //collider: collider1,
@@ -59,6 +74,11 @@ export default class CollidableGameBaseObject
     const temp = vec2.create();
 
     const cOtherObj = otherObj as CircleColliderResult;
+
+    // Special handling for bullets
+    // if (otherObj && otherObj.owner instanceof Bullet) {
+    //   console.log("BULLET IMPACT!");
+    // }
 
     if (otherObj && otherObj.owner instanceof CollidableGameBaseObject) {
       const gbOtherOwner = otherObj.owner as CollidableGameBaseObject;
@@ -92,20 +112,26 @@ export default class CollidableGameBaseObject
   }
 
   onCollided(thisObj: ColliderResult, otherObj: ColliderResult) {
-    // console.log("collidableGameBaseObject onCollided", thisObj.owner?.id, otherObj.owner?.id);
-    const cThisObj = thisObj as CircleColliderResult;
-    const cOtherObj = otherObj as CircleColliderResult;
+    if (this.removed || !this.canCollide) return;
+
     const cOtherOwner = otherObj.owner as CollidableGameBaseObject;
+    if (!cOtherOwner || cOtherOwner.removed || !cOtherOwner.canCollide) return;
 
-    // If the other thing is no longer collidable, then we don't have to
-    // adjust overlap.
-    if (!cOtherObj.collider.canCollide) return;
+    const cThisObj = thisObj as CircleColliderResult;
 
+    const cOtherObj = otherObj as CircleColliderResult;
     const minDist = cThisObj.radius + cOtherObj.radius + Number.EPSILON;
 
     // As a last check, we need to make sure that despite all this, the two objects
     // are not on top of each other.
     if (vec2.sqrDist(this.position, cOtherObj.owner!.position) <= minDist ** 2) {
+      console.log(
+        "OOPPSE!",
+        `${thisObj.owner?.id} - ${cThisObj.radius}`,
+        `${cOtherOwner.id} - ${cOtherObj.radius}`,
+        vec2.sqrDist(this.position, cOtherObj.owner!.position),
+        minDist ** 2
+      );
       const temp = vec2.create();
       vec2.sub(temp, this.position, cOtherObj.owner!.position);
       const amt = minDist - vec2.length(temp);
@@ -124,7 +150,8 @@ export default class CollidableGameBaseObject
       type: "CollidableGameBaseObject", // Should get overwritten
       id: this.id,
 
-      elasticity: this.elasticity
+      elasticity: this.elasticity,
+      canCollide: this.canCollide
     };
   }
 
@@ -137,5 +164,6 @@ export default class CollidableGameBaseObject
     const pObj = obj as SerializedCollidableGameBaseObject;
 
     this.elasticity = pObj.elasticity;
+    this.canCollide = pObj.canCollide;
   }
 }

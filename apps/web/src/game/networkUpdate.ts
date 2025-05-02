@@ -5,7 +5,9 @@ import Player, { SerializedPlayer } from "./player";
 import WorldBounds, { SerializedWorldBounds } from "./worldBounds";
 import Ship, { SerializedShip } from "./ship";
 import Bullet, { SerializedBullet } from "./bullet";
+import Asteroid, { SerializedAsteroid } from "./asteroid";
 import Explosion, { SerializedExplosion } from "./explosion";
+import CollidableGameBaseObject from "@shared/game/collidableGameBaseObject";
 
 const DR_FREQ = 5000;
 
@@ -79,6 +81,9 @@ export default class NetworkUpdate extends GameObject {
 
           const bullet = Bullet.from(owner, sNewObj);
           game.addGameObject(bullet, game.collidables);
+        } else if (newObj.type == "Asteroid") {
+          const asteroid = Asteroid.from(newObj as SerializedAsteroid);
+          game.addGameObject(asteroid, game.collidables);
         } else if (newObj.type == "Explosion") {
           const explosion = Explosion.from(game.resources, newObj as SerializedExplosion);
           game.addGameObject(explosion, game.collidables);
@@ -96,7 +101,13 @@ export default class NetworkUpdate extends GameObject {
       .filter("network")
       .filter((obj) => !existing.has(obj.id))
       .filter((obj) => !obj.tags.includes("explosion")) // Let the client handle removal of explosions
-      .forEach((obj) => game.removeGameObject(obj));
+      .forEach((obj) => {
+        game.removeGameObject(obj);
+
+        if (obj instanceof CollidableGameBaseObject) {
+          (obj as CollidableGameBaseObject)._collider.canCollide = false;
+        }
+      });
 
     // Clear out our update.
     this._lastUpdate = null;
