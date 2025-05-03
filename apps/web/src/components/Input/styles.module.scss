@@ -1,0 +1,26 @@
+.input {
+  background: black;
+  border-radius: 3px;
+  border: 1px solid #0075a3;
+  border-top: 0;
+  border-bottom: 0;
+
+  caret-shape: block;
+  caret-color: #00b7ff;
+
+  color: #e7f8ff;
+
+  font-weight: 400;
+  font-size: 1rem;
+  padding: 2px 0.5rem;
+
+  &::selection {
+    background: #1789b9;
+    color: black;
+  }
+
+  &:focus {
+    box-shadow: 0 0 1rem 0 #0075a380 inset;
+    outline: 1px solid #0075a380;
+  }
+}

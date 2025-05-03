@@ -98,10 +98,11 @@ export default class Game extends GameBase {
   }
 
   connect() {
-    this.socket.on("playerCreated", (sPlayer: SerializedPlayer) => {
-      console.log("playerCreated");
+    console.log("Game.connect");
+    this.socket.emit("initializePlayer", (sPlayer: SerializedPlayer) => {
+      console.log("initializePlayer");
 
-      // Handle disconnectS?
+      // Handle disconnects?
       this.socket.on("disconnect", () => console.log("Disconnected by server!"));
 
       this.socket.on("error", (e) => console.warn("Message error:", e));
@@ -153,6 +154,12 @@ export default class Game extends GameBase {
     );
   }
 
+  updatePlayer(player: { name: string }) {
+    if (!this.player) return;
+
+    this.socket.emit("updatePlayer", { id: this.player, type: "PlayerUpdate", ...player });
+  }
+
   start() {
     super.start();
     this.allowSpawn();
@@ -161,8 +168,9 @@ export default class Game extends GameBase {
   async allowSpawn() {
     const fireMsg = new TextHud({
       textSize: 40,
+      fontType: "Audiowide",
       textColor: "#f00",
-      text: "Press Fire to Spawn",
+      text: "PRESS FIRE TO SPAWN",
       justify: "center",
       position: vec2.fromValues(0, 0)
     });

@@ -1,8 +1,7 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { io } from "socket.io-client";
 
 import Game from "@web/game/index";
-import Player, { SerializedPlayer } from "@web/game/player";
 
 import { GameContext } from "./useGame";
 
@@ -10,9 +9,14 @@ import GameViewer from "./GameViewer";
 import PlayerList from "./PlayerList";
 import ShipConfig from "./ShipConfig";
 
+import Modal from "./components/Modal";
+import NameModal from "./NameModal";
+
 import styles from "./App.module.scss";
 
 function App() {
+  const [ready, setReady] = useState(false);
+  const [nameEntered, setNameEntered] = useState(false);
   const [game, setGame] = useState<Game | null>(null);
 
   // Initialize our game.
@@ -30,10 +34,23 @@ function App() {
 
   useEffect(() => {
     if (game && !game._running && game.primaryCamera) {
+      console.log("Game Connect/Start");
       game.connect();
       game.start();
+      setReady(true);
     }
   }, [game]);
+
+  const handleSetName = useCallback(
+    (newName: string) => {
+      if (!game) return;
+
+      console.log("NEW NAME", newName);
+      game?.updatePlayer({ name: newName });
+      setNameEntered(true);
+    },
+    [game, name]
+  );
 
   return (
     <GameContext.Provider value={{ game: game }}>
@@ -41,6 +58,11 @@ function App() {
         <GameViewer />
         <PlayerList />
         <ShipConfig className={styles.shipConfig} />
+        {!ready ? (
+          <Modal>{"Loading..."}</Modal>
+        ) : !nameEntered ? (
+          <NameModal onClose={handleSetName} />
+        ) : null}
       </div>
     </GameContext.Provider>
   );

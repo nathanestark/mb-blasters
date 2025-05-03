@@ -1,0 +1,52 @@
+.button {
+  clip-path: polygon(
+    0 100%,
+    0 calc(100% - 0.5rem),
+    1rem 0,
+    100% 0,
+    100% 0.5rem,
+    calc(100% - 1rem) 100%
+  );
+
+  border: 0;
+  background: #a7a7a7;
+  padding: 0;
+
+  cursor: pointer;
+
+  transition: border-color 100ms ease-out;
+
+  .inner {
+    clip-path: polygon(
+      1px calc(100% - 1px),
+      1px calc(100% - 0.5rem + 0.5px),
+      calc(1rem + 1px) 1px,
+      calc(100% - 1px) 1px,
+      calc(100% - 1px) calc(0.5rem - 0.5px),
+      calc(100% - 1rem - 1px) calc(100% - 1px)
+    );
+
+    background: rgb(0, 22, 31);
+    background: radial-gradient(circle at 0%, rgb(0, 90, 126) 0%, rgb(0, 22, 31) 50%);
+    background-size: 100% 100%;
+
+    color: #e7f8ff;
+
+    font-family: "Audiowide";
+    font-weight: 400;
+    font-size: 1rem;
+
+    padding: 0.25rem 1rem;
+
+    outline: none;
+
+    transition: background-size 100ms ease-out;
+  }
+
+  &:hover {
+    background: #00b7ff;
+    .inner {
+      background-size: 200% 200%;
+    }
+  }
+}

@@ -1,16 +1,19 @@
 import { Socket } from "socket.io";
 import Game from "@server/game/index";
 import Player from "@server/game/player";
-import { NetworkObject } from "@shared/game/network";
 import { SerializedPlayer } from "@shared/game/player";
 import { ShipConfiguration } from "@shared/game/ship";
+import PlayerUpdate from "@shared/game/playerUpdate";
 
 export const handleConnection = (game: Game) => (socket: Socket) => {
   console.log("Player Connected");
   (async function processConnection() {
     const player = await game.addPlayer(new Player(socket));
-    // Reply back with a player created message
-    socket.emit("playerCreated", player.serialize());
+    // Deal with the initialize player call
+    socket.on("initializePlayer", (callback: (player: SerializedPlayer) => void) => {
+      // Reply back with a player created message
+      callback(player.serialize());
+    });
 
     // Deal with echo
     socket.on("echo", (msg: string, callback: (reply: string) => void) => {
@@ -22,8 +25,8 @@ export const handleConnection = (game: Game) => (socket: Socket) => {
 
     // Start listening for messages from the client.
     socket.onAny((eventName: string, ...args: Array<any>) => {
-      // Ignore playerCreated, echo and drPing
-      if (["playercreated", "echo", "drPing"].includes(eventName)) return;
+      // Ignore initializePlayer, echo and drPing
+      if (["initializePlayer", "echo", "drPing"].includes(eventName)) return;
 
       const handler = MESSAGE_HANDLERS[eventName];
       if (!handler) socket.emit("error", `Event '${eventName}' doesn't exist.`);
@@ -42,12 +45,13 @@ export const handleConnection = (game: Game) => (socket: Socket) => {
   })();
 };
 
-export const updatePlayer = (game: Game, player: Player, obj: SerializedPlayer) => {
+export const updatePlayer = (game: Game, player: Player, obj: PlayerUpdate) => {
   // Don't let players update other players.
   if (player.id != obj.id) throw { code: "unauthorized" };
 
   if (!game.getGameObject(player.id)) throw { code: "notFound", message: "Player not found" };
 
+  console.log("Updating player name to", obj.name);
   player.name = obj.name || "";
 };
 

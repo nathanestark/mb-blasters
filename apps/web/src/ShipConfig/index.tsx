@@ -12,7 +12,7 @@ import cx from "classnames";
 import { ShipConfiguration, ShipType } from "@shared/game/ship";
 import { SpecialType } from "@shared/game/specials";
 
-import useGame from "./useGame";
+import useGame from "../useGame";
 import Player from "@web/game/player";
 
 import DeltaShipIcon from "@web/svgs/deltaShip";
@@ -26,7 +26,7 @@ import WarpSpecialIcon from "@web/svgs/warpSpecial";
 import CloakSpecialIcon from "@web/svgs/cloakSpecial";
 import LockIcon from "@web/svgs/lock";
 
-import styles from "./ShipConfig.module.scss";
+import styles from "./styles.module.scss";
 
 const THRUST_MIN = 500;
 const THRUST_MAX = 5500;
