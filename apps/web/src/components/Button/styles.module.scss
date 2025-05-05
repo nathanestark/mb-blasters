@@ -18,12 +18,12 @@
 
   .inner {
     clip-path: polygon(
-      1px calc(100% - 1px),
-      1px calc(100% - 0.5rem + 0.5px),
-      calc(1rem + 1px) 1px,
-      calc(100% - 1px) 1px,
-      calc(100% - 1px) calc(0.5rem - 0.5px),
-      calc(100% - 1rem - 1px) calc(100% - 1px)
+      1.5px calc(100% - 1.5px),
+      1.5px calc(100% - 0.5rem + 0.5px),
+      calc(1rem + 1px) 1.5px,
+      calc(100% - 1.5px) 1.5px,
+      calc(100% - 1.5px) calc(0.5rem - 0.5px),
+      calc(100% - 1rem - 1px) calc(100% - 1.5px)
     );
 
     background: rgb(0, 22, 31);
