@@ -44,8 +44,13 @@ module.exports = {
       {
         test: /\.tsx?$/,
         use: "ts-loader",
-        exclude: /node_modules/
+        exclude: [/node_modules/]
       }
+      // Worker rules
+      // {
+      //   test: /\.worker\.ts$/, // Handling worker files
+      //   type: "asset/inline" // Inlining worker files directly into the main bundle
+      // }
     ]
   },
   plugins: [

@@ -6,6 +6,7 @@ import { CollisionDetection, Container, Math2D } from "star-engine";
 import Player from "./player";
 import NetworkUpdate from "./networkUpdate";
 import { ShipConfiguration } from "@shared/game/ship";
+import Starfield from "@shared/game/background/starfield";
 import Ship from "./ship";
 import Asteroid from "@shared/game/asteroid";
 
@@ -15,6 +16,7 @@ export default class Game extends GameBase {
   ioServer: Server;
   _players: Container;
   _collidables: Container;
+  _background: Container;
   _ships: Container;
 
   _worldBounds: WorldBounds;
@@ -38,8 +40,9 @@ export default class Game extends GameBase {
     });
 
     this._collidables = new Container();
+    this._background = new Container();
     this._ships = new Container();
-    this._collidables.children = [this._worldBounds, this._ships];
+    this._collidables.children = [this._background, this._worldBounds, this._ships];
 
     const collisionDetection = new CollisionDetection([
       this._worldBounds.position,
@@ -60,9 +63,57 @@ export default class Game extends GameBase {
     // Then collider
     this.addGameObject(collisionDetection);
 
+    this.addBackground();
+
     this.addSmallAsteroids();
     this.addMediumAsteroids();
     this.addLargeAsteroids();
+  }
+
+  addBackground() {
+    // Add in a basic starfield.
+    this.addGameObjects(
+      [
+        new Starfield({
+          position: vec2.fromValues(0, 0),
+          depth: 0.999,
+          size: vec2.min(vec2.create(), this._worldBounds.size, vec2.fromValues(1920, 1080)),
+          density: 0.0008,
+          repeat: true
+        }),
+        new Starfield({
+          position: vec2.fromValues((1 - 2 * Math.random()) * 500, (1 - 2 * Math.random()) * 250),
+          depth: 0.995,
+          size: vec2.min(vec2.create(), this._worldBounds.size, vec2.fromValues(1000, 500)),
+          density: 0.01,
+          repeat: "x",
+          type: "milkyway",
+          rotation: Math.random() * Math2D.twoPi
+        }),
+        new Starfield({
+          position: vec2.fromValues(0, 0),
+          depth: 0.99,
+          size: vec2.min(vec2.create(), this._worldBounds.size, vec2.fromValues(1920, 1080)),
+          density: 0.0002,
+          repeat: true
+        }),
+        ...new Array(10).fill(0).map(
+          () =>
+            new Starfield({
+              position: vec2.fromValues(
+                Math.random() * this._worldBounds.size[0] - this._worldBounds.size[0] / 2,
+                Math.random() * this._worldBounds.size[1] - this._worldBounds.size[1] / 2
+              ),
+              depth: 0.9 + 0.09 * Math.random(),
+              size: vec2.fromValues(Math.random() * 800 + 200, Math.random() * 800 + 200),
+              density: 0.0001,
+              type: "cluster",
+              repeat: false
+            })
+        )
+      ],
+      this._background
+    );
   }
 
   addSmallAsteroids() {

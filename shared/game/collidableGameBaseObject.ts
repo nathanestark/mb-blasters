@@ -92,7 +92,6 @@ export default class CollidableGameBaseObject
   }
 
   onCollided(thisObj: ColliderResult, otherObj: ColliderResult) {
-    // console.log("collidableGameBaseObject onCollided", thisObj.owner?.id, otherObj.owner?.id);
     const cThisObj = thisObj as CircleColliderResult;
     const cOtherObj = otherObj as CircleColliderResult;
     const cOtherOwner = otherObj.owner as CollidableGameBaseObject;

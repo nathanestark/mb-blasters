@@ -18,6 +18,7 @@ import { vec2 } from "gl-matrix";
 import Ship from "./ship";
 import { ShipConfiguration } from "@shared/game/ship";
 import PingHud from "./hud/pingHud";
+import WorldBounds from "./worldBounds";
 
 interface GameProperties extends GameBaseProperties {}
 
@@ -31,9 +32,12 @@ export default class Game extends GameBase {
 
   players: Container;
   collidables: Container;
+  background: Container;
   ships: Container;
   cameras: Container;
   centeredHud: Container;
+
+  worldBounds?: WorldBounds;
 
   shipConfiguration: ShipConfiguration = {
     type: "bustership",
@@ -62,6 +66,9 @@ export default class Game extends GameBase {
 
     this.players = new Container();
     this.addGameObject(this.players);
+
+    this.background = new Container();
+    this.addGameObject(this.background);
 
     this.collidables = new Container();
     this.ships = new Container();

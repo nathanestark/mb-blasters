@@ -125,13 +125,6 @@ export default class CollidableGameBaseObject
     // As a last check, we need to make sure that despite all this, the two objects
     // are not on top of each other.
     if (vec2.sqrDist(this.position, cOtherObj.owner!.position) <= minDist ** 2) {
-      console.log(
-        "OOPPSE!",
-        `${thisObj.owner?.id} - ${cThisObj.radius}`,
-        `${cOtherOwner.id} - ${cOtherObj.radius}`,
-        vec2.sqrDist(this.position, cOtherObj.owner!.position),
-        minDist ** 2
-      );
       const temp = vec2.create();
       vec2.sub(temp, this.position, cOtherObj.owner!.position);
       const amt = minDist - vec2.length(temp);

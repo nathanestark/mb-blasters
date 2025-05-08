@@ -7,6 +7,7 @@ import Ship, { SerializedShip } from "./ship";
 import Bullet, { SerializedBullet } from "./bullet";
 import Asteroid, { SerializedAsteroid } from "./asteroid";
 import Explosion, { SerializedExplosion } from "./explosion";
+import Starfield, { SerializedStarfield } from "./background/starfield";
 import CollidableGameBaseObject from "@shared/game/collidableGameBaseObject";
 
 const DR_FREQ = 5000;
@@ -58,6 +59,7 @@ export default class NetworkUpdate extends GameObject {
           game.addGameObject(player, game.players);
         } else if (newObj.type == "WorldBounds") {
           const worldBounds = WorldBounds.from(newObj as SerializedWorldBounds);
+          game.worldBounds = worldBounds;
           game.addGameObject(worldBounds, game.collidables);
         } else if (newObj.type == "Ship") {
           // Find the owner of the ship.
@@ -87,6 +89,9 @@ export default class NetworkUpdate extends GameObject {
         } else if (newObj.type == "Explosion") {
           const explosion = Explosion.from(game.resources, newObj as SerializedExplosion);
           game.addGameObject(explosion, game.collidables);
+        } else if (newObj.type == "Starfield") {
+          const starfield = Starfield.from(newObj as SerializedStarfield);
+          game.addGameObject(starfield, game.background);
         } else {
           // Ignore any we don't recognize
           console.warn("Unrecognized serialized type in network update:", newObj.type);

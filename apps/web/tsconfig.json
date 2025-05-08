@@ -3,7 +3,8 @@
   "compilerOptions": {
     "module": "esnext",
     "jsx": "react-jsx",
-    "outDir": "dist"
+    "outDir": "dist",
+    "lib": ["esnext", "dom", "webworker"]
   },
-  "include": ["src"]
+  "include": ["src", "typings"]
 }
