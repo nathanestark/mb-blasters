@@ -39,13 +39,11 @@
     top: 1rem;
     right: 1rem;
 
-    color: white;
-    border: 1px solid white;
-    padding: 0.5rem;
-
-    ul {
-      list-style: none;
-      padding: 0 1rem;
+    .container {
+      ul {
+        list-style: none;
+        padding: 0;
+      }
     }
   }
   .shipConfig {

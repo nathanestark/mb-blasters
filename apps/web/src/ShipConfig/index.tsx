@@ -27,6 +27,7 @@ import CloakSpecialIcon from "@web/svgs/cloakSpecial";
 import LockIcon from "@web/svgs/lock";
 
 import styles from "./styles.module.scss";
+import Card from "@web/components/Card";
 
 const THRUST_MIN = 500;
 const THRUST_MAX = 5500;
@@ -257,7 +258,7 @@ const ShipConfig: FC<Props> = ({ className }) => {
   const specialPowerLocked = useMemo(() => locks.includes("specialPower"), [locks]);
 
   return (
-    <div className={cx(styles.shipConfig, className)}>
+    <Card className={cx(styles.shipConfig, className)}>
       <header>
         <h3>{"Ship"}</h3>
         <button onClick={handleShipTypeClicked}>
@@ -375,7 +376,7 @@ const ShipConfig: FC<Props> = ({ className }) => {
           </label>
         </li>
       </ul>
-    </div>
+    </Card>
   );
 };
 

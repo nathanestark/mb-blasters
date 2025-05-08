@@ -5,11 +5,12 @@ import styles from "./styles.module.scss";
 
 interface Props {
   className?: string;
+  type?: "heavy" | "light";
 }
 
-const Card: FC<PropsWithChildren<Props>> = ({ className, children }) => {
+const Card: FC<PropsWithChildren<Props>> = ({ className, type = "light", children }) => {
   return (
-    <div className={cx(styles.card, className)}>
+    <div className={cx(styles.card, styles[type], className)}>
       <div className={styles.inner}>{children}</div>
     </div>
   );

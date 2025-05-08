@@ -21,7 +21,9 @@ const Modal: FC<PropsWithChildren<Props>> = ({
 }) => {
   return (
     <Lightbox className={cx(styles.modal, containerClassName)}>
-      <Card className={cx(styles.content, className, { [styles[size]]: size != "none" })}>
+      <Card
+        className={cx(styles.content, className, { [styles[size]]: size != "none" })}
+        type="heavy">
         {children}
       </Card>
     </Lightbox>

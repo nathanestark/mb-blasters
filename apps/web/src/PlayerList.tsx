@@ -3,6 +3,8 @@ import React, { FC, useMemo } from "react";
 import useGame from "./useGame";
 import Player from "@web/game/player";
 
+import Card from "./components/Card";
+
 import styles from "./App.module.scss";
 
 const PlayerList: FC = () => {
@@ -20,17 +22,19 @@ const PlayerList: FC = () => {
   }, [getGame]);
 
   return (
-    <div className={styles.playersList}>
-      <h3>{"Players"}</h3>
-      <ul>
-        {players.map((player) => (
-          <li key={player.id}>
-            <span>{player.name}</span>
-            {player.id == playerId && <span>{" (You)"}</span>}
-          </li>
-        ))}
-      </ul>
-    </div>
+    <Card className={styles.playersList}>
+      <div className={styles.container}>
+        <h3>{"Players"}</h3>
+        <ul>
+          {players.map((player) => (
+            <li key={player.id}>
+              <span>{player.name}</span>
+              {player.id == playerId && <span>{" (You)"}</span>}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </Card>
   );
 };
 
