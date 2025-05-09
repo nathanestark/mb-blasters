@@ -19,6 +19,7 @@ import Ship from "./ship";
 import { ShipConfiguration } from "@shared/game/ship";
 import PingHud from "./hud/pingHud";
 import WorldBounds from "./worldBounds";
+import Dust from "./background/dust";
 
 interface GameProperties extends GameBaseProperties {}
 
@@ -74,6 +75,11 @@ export default class Game extends GameBase {
     this.ships = new Container();
     this.collidables.children = [this.ships];
     this.addGameObject(this.collidables);
+
+    // Add in dust. We want it rendered above players + objects.
+    const dust = new Dust();
+    dust.generate();
+    this.addGameObject(dust);
 
     this.centeredHud = new CenteredHud();
     const dataHud = new DataHud();
