@@ -34,8 +34,8 @@ export default class Grav extends Special {
 
   update(_tDelta: number) {
     if (this._on) {
-      (this.owner.game.filter("gamebase") as Array<GameBaseObject>).forEach((obj) => {
-        if (obj.id == this.owner.id || obj.mass <= 0) return;
+      (this.owner.game.filter("gamebaseObject") as Array<GameBaseObject>).forEach((obj) => {
+        if (obj.id == this.owner.id || obj.mass <= 0 || !obj.totalForce) return;
 
         // Create a force pointed towards us.
         const force = vec2.create();

@@ -1,5 +1,6 @@
 import { GameObject } from "star-engine";
 import Game from "./index";
+import CollidableGameBaseObject from "@shared/game/collidableGameBaseObject";
 import { NetworkUpdateData, NetworkDeserializable } from "@shared/game/network";
 import Player, { SerializedPlayer } from "./player";
 import WorldBounds, { SerializedWorldBounds } from "./worldBounds";
@@ -8,7 +9,7 @@ import Bullet, { SerializedBullet } from "./bullet";
 import Asteroid, { SerializedAsteroid } from "./asteroid";
 import Explosion, { SerializedExplosion } from "./explosion";
 import Starfield, { SerializedStarfield } from "./background/starfield";
-import CollidableGameBaseObject from "@shared/game/collidableGameBaseObject";
+import Planet, { SerializedPlanet } from "./background/planet";
 
 const DR_FREQ = 5000;
 
@@ -92,6 +93,9 @@ export default class NetworkUpdate extends GameObject {
         } else if (newObj.type == "Starfield") {
           const starfield = Starfield.from(newObj as SerializedStarfield);
           game.addGameObject(starfield, game.background);
+        } else if (newObj.type == "Planet") {
+          const planet = Planet.from(game.resources, newObj as SerializedPlanet);
+          game.addGameObject(planet, game.background);
         } else {
           // Ignore any we don't recognize
           console.warn("Unrecognized serialized type in network update:", newObj.type);

@@ -106,7 +106,13 @@ export default class Game extends GameBase {
       { type: "image", path: "images/ship2.png", names: ["sweepship"] },
       { type: "image", path: "images/ship3.png", names: ["bustership"] },
       { type: "image", path: "images/explosion1.png", names: ["shipexplosion"] },
-      { type: "image", path: "images/warp.png", names: ["warp"] }
+      { type: "image", path: "images/warp.png", names: ["warp"] },
+      { type: "image", path: "images/planet1.png", names: ["planet1"] },
+      { type: "image", path: "images/planet2.png", names: ["planet2"] },
+      { type: "image", path: "images/planet3.png", names: ["planet3"] },
+      { type: "image", path: "images/planet4.png", names: ["planet4"] },
+      { type: "image", path: "images/planet5.png", names: ["planet5"] },
+      { type: "image", path: "images/planet6.png", names: ["planet6"] }
     ]);
   }
 

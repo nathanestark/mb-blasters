@@ -41,7 +41,7 @@ export default class Starfield extends ProceduralObject {
     if (!sObj) return null;
     return {
       ...sObj,
-      type: "Starfield", // Should get overwritten
+      type: "Starfield",
       id: this.id,
 
       size: serializeVec2(this.size),

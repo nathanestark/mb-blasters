@@ -57,7 +57,7 @@ export default class GameBaseObject
   }: GameBaseObjectProperties = {}) {
     super();
 
-    this.classTags = ["gamebase", "network"];
+    this.classTags = ["gamebase", "gamebaseObject", "network"];
 
     if (position) this.position = position;
     if (velocity) this.velocity = velocity;

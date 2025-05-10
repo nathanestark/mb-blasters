@@ -7,6 +7,7 @@ import Player from "./player";
 import NetworkUpdate from "./networkUpdate";
 import { ShipConfiguration } from "@shared/game/ship";
 import Starfield from "@shared/game/background/starfield";
+import Planet, { PlanetType } from "@shared/game/background/planet";
 import Ship from "./ship";
 import Asteroid from "@shared/game/asteroid";
 
@@ -78,14 +79,14 @@ export default class Game extends GameBase {
           position: vec2.fromValues(0, 0),
           depth: 0.999,
           size: vec2.min(vec2.create(), this._worldBounds.size, vec2.fromValues(1920, 1080)),
-          density: 0.0008,
+          density: 0.0008 + (Math.random() * 0.001 - 0.0005),
           repeat: true
         }),
         new Starfield({
           position: vec2.fromValues((1 - 2 * Math.random()) * 500, (1 - 2 * Math.random()) * 250),
           depth: 0.995,
           size: vec2.min(vec2.create(), this._worldBounds.size, vec2.fromValues(1000, 500)),
-          density: 0.01,
+          density: 0.01 + (Math.random() * 0.01 - 0.005),
           repeat: "x",
           type: "milkyway",
           rotation: Math.random() * Math2D.twoPi
@@ -94,7 +95,7 @@ export default class Game extends GameBase {
           position: vec2.fromValues(0, 0),
           depth: 0.99,
           size: vec2.min(vec2.create(), this._worldBounds.size, vec2.fromValues(1920, 1080)),
-          density: 0.0002,
+          density: 0.0002 + (Math.random() * 0.001 - 0.0005),
           repeat: true
         }),
         ...new Array(10).fill(0).map(
@@ -110,7 +111,22 @@ export default class Game extends GameBase {
               type: "cluster",
               repeat: false
             })
-        )
+        ),
+        (() => {
+          const size = 100 + Math.random() * 924;
+          const depth = 0.8 + Math.random() * 0.1;
+          const spawnWidth = Math.max(0, depth * (this._worldBounds.size[0] - size));
+          const spawHeight = Math.max(0, depth * (this._worldBounds.size[1] - size));
+          return new Planet({
+            size: vec2.fromValues(size, size),
+            position: vec2.fromValues(
+              Math.random() * spawnWidth - spawnWidth / 2,
+              Math.random() * spawHeight - spawHeight / 2
+            ),
+            depth: depth,
+            type: `planet${Math.ceil(Math.random() * 6)}` as PlanetType
+          });
+        })()
       ],
       this._background
     );
