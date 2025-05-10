@@ -131,8 +131,11 @@ export default class Game extends GameBase {
         localObj = Player.from(sPlayer);
         this.addGameObject(localObj, this.players);
         this.player = localObj.id;
-      } else if (localObj.deserialize) localObj.deserialize(sPlayer);
-      else throw `Object ${sPlayer.id} (${sPlayer.type}) does not implement networkdeserializable`;
+      } else if (localObj.deserialize) {
+        localObj.deserialize(sPlayer);
+        this.player = localObj.id;
+      } else
+        throw `Object ${sPlayer.id} (${sPlayer.type}) does not implement networkdeserializable`;
     });
   }
 
