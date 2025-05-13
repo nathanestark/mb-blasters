@@ -1,5 +1,6 @@
 import { Socket } from "socket.io-client";
 import {
+  CollisionDetection,
   Container,
   CONTROLLER_ACTION,
   FPSHud,
@@ -38,6 +39,7 @@ export default class Game extends GameBase {
   cameras: Container;
   centeredHud: Container;
 
+  collisionDetection: CollisionDetection;
   worldBounds?: WorldBounds;
 
   shipConfiguration: ShipConfiguration = {
@@ -68,10 +70,16 @@ export default class Game extends GameBase {
     this.players = new Container();
     this.addGameObject(this.players);
 
+    this.collidables = new Container();
+    this.ships = new Container();
+    this.collidables.children = [this.ships];
+
+    this.collisionDetection = new CollisionDetection([vec2.create(), vec2.create()]);
+    this.addGameObject(this.collisionDetection);
+
     this.background = new Container();
     this.addGameObject(this.background);
 
-    this.collidables = new Container();
     this.ships = new Container();
     this.collidables.children = [this.ships];
     this.addGameObject(this.collidables);

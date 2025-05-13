@@ -1,5 +1,5 @@
 import { vec2 } from "gl-matrix";
-import { GameObject } from "star-engine";
+import { GameObject, RefreshTime } from "star-engine";
 import {
   NetworkObject,
   SerializedVec2,
@@ -35,6 +35,8 @@ export default class BackgroundObject
   repeat: boolean | "x" | "y" = false;
   depth: number = 1; // 0 to 1, where 1 is infinitely far away.
 
+  serverTargetLastUpdateTime: number = 0;
+
   classTags: Array<string> = [];
 
   constructor({ position, velocity, rotation, repeat, depth }: BackgroundObjectProperties = {}) {
@@ -49,11 +51,11 @@ export default class BackgroundObject
     if (typeof depth === "number") this.depth = depth;
   }
 
-  update(tDelta: number) {
+  update(time: RefreshTime) {
     if (vec2.sqrLen(this.velocity) > 0) {
       // Apply our velocity to our position, but don't destroy velocity.
       const vel = vec2.clone(this.velocity);
-      vec2.scale(vel, vel, tDelta);
+      vec2.scale(vel, vel, time.timeAdvance);
       vec2.add(this.position, this.position, vel);
     }
   }
@@ -71,7 +73,7 @@ export default class BackgroundObject
     };
   }
 
-  deserialize(obj: NetworkObject) {
+  deserialize(obj: NetworkObject, initialize = true) {
     if (this.id != obj.id) throw "Id mismatch during deserialization!";
 
     const pObj = obj as SerializedBackgroundObject;

@@ -1,4 +1,4 @@
-import { TextHud, TextHudProperties } from "star-engine";
+import { RefreshTime, TextHud, TextHudProperties } from "star-engine";
 
 export default class ObjectCountHud extends TextHud {
   _lastPrint: number;
@@ -13,8 +13,8 @@ export default class ObjectCountHud extends TextHud {
     this._calculateInterval = 0.5;
   }
 
-  update(tDelta: number) {
-    this._lastCalculateTime += tDelta;
+  update(time: RefreshTime) {
+    this._lastCalculateTime += time.timeAdvance;
     if (this._lastCalculateTime >= this._calculateInterval) {
       this._lastCalculateTime = 0;
       this._lastPrint = this._game.filter({ op: "exclusive", tags: ["collider"] }).length;

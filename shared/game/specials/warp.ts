@@ -1,7 +1,7 @@
 import { quat, vec2, vec3 } from "gl-matrix";
 import Special, { SerializableSpecial } from "./special";
 import Ship, { OnOffEventContext } from "../ship";
-import { Math2D } from "star-engine";
+import { Math2D, RefreshTime } from "star-engine";
 import WorldBounds from "../worldBounds";
 import { SerializedVec2, serializeVec2, deserializeVec2 } from "../network";
 
@@ -80,7 +80,7 @@ export default class Warp extends Special {
   jumping?(): void;
   jump?(): void;
 
-  update(tDelta: number) {
+  update(time: RefreshTime) {
     if (this.owner._destroying || this.owner.removed) return;
 
     if (this._ellapsed) {

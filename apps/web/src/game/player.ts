@@ -9,7 +9,7 @@ export default class Player extends PlayerBase {
   static from(sPlayer: SerializedPlayer): Player {
     const player = new Player();
     player._id = sPlayer.id;
-    player.deserialize(sPlayer);
+    player.deserialize(sPlayer, true);
     return player;
   }
 }

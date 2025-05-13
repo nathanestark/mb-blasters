@@ -1,7 +1,7 @@
 import { vec2 } from "gl-matrix";
 import Special, { SerializableSpecial } from "./special";
 import Ship, { CollisionEventContext, OnOffEventContext } from "../ship";
-import { BoundingBoxColliderResult, CircleColliderResult } from "star-engine";
+import { BoundingBoxColliderResult, CircleColliderResult, RefreshTime } from "star-engine";
 import CollidableGameBaseObject from "../collidableGameBaseObject";
 import Bullet from "../bullet";
 
@@ -62,14 +62,17 @@ export default class Shield extends Special {
     this._on = false;
   }
 
-  update(tDelta: number) {
+  update(time: RefreshTime) {
     if (this._on) {
-      this._status = Math.max(0, this._status - (tDelta * 1900) / (26 + this.power * 2));
+      this._status = Math.max(0, this._status - (time.timeAdvance * 1900) / (26 + this.power * 2));
       if (this._status == 0) {
         this._on = false;
       }
     } else {
-      this._status = Math.min(100, this._status + (tDelta * 950) / (226 - this.power * 2));
+      this._status = Math.min(
+        100,
+        this._status + (time.timeAdvance * 950) / (226 - this.power * 2)
+      );
     }
   }
 

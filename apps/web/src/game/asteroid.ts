@@ -20,7 +20,7 @@ export default class Asteroid extends AsteroidBase {
   static from(sObj: SerializedAsteroid): Asteroid {
     const obj = new Asteroid();
     obj._id = sObj.id;
-    obj.deserialize(sObj);
+    obj.deserialize(sObj, true);
     return obj;
   }
 }

@@ -15,6 +15,7 @@ export default class Player
 {
   name: string = "Player";
   classTags: Array<string> = [];
+  serverTargetLastUpdateTime: number = 0;
 
   constructor({ name }: PlayerProperties = {}) {
     super();
@@ -31,7 +32,7 @@ export default class Player
     };
   }
 
-  deserialize(obj: NetworkObject) {
+  deserialize(obj: NetworkObject, initialize = true) {
     if (this.id != obj.id) throw "Id mismatch during deserialization!";
     if (obj.type != "Player") throw "Type mismatch during deserialization!";
 

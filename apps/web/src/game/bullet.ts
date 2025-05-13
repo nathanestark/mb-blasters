@@ -20,7 +20,7 @@ export default class Bullet extends BulletBase {
   static from(owner: Ship, sObj: SerializedBullet): Bullet {
     const obj = new Bullet(owner);
     obj._id = sObj.id;
-    obj.deserialize(sObj);
+    obj.deserialize(sObj, true);
     return obj;
   }
 }

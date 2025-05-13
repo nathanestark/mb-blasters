@@ -2,6 +2,7 @@ import { vec2 } from "gl-matrix";
 import Special, { SerializableSpecial } from "./special";
 import Ship from "../ship";
 import GameBaseObject from "../gameBaseObject";
+import { RefreshTime } from "star-engine";
 
 export interface SerializableGrav extends SerializableSpecial {
   on: boolean;
@@ -32,7 +33,7 @@ export default class Grav extends Special {
 
   activate?(): void;
 
-  update(_tDelta: number) {
+  update(_time: RefreshTime) {
     if (this._on) {
       (this.owner.game.filter("gamebaseObject") as Array<GameBaseObject>).forEach((obj) => {
         if (obj.id == this.owner.id || obj.mass <= 0 || !obj.totalForce) return;

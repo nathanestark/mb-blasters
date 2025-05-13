@@ -127,11 +127,11 @@ export default class CollidableGameBaseObject
     };
   }
 
-  deserialize(obj: NetworkObject) {
+  deserialize(obj: NetworkObject, initialize = true) {
     if (this.id != obj.id) throw "Id mismatch during deserialization!";
     // Because this class is inherited, 'type' may be different.
     // if (obj.type != "WorldBounds") throw "Type mismatch during deserialization!";
-    super.deserialize(obj);
+    super.deserialize(obj, initialize);
 
     const pObj = obj as SerializedCollidableGameBaseObject;
 

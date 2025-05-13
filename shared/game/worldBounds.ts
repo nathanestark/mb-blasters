@@ -33,6 +33,7 @@ export default class WorldBounds
   size: vec2;
   bounds: [vec2, vec2];
   color: string;
+  serverTargetLastUpdateTime: number = 0;
   _collider: BoundingBoxCollider;
 
   constructor({ position, size, color }: WorldBoundsProperties = {}) {
@@ -76,7 +77,7 @@ export default class WorldBounds
     };
   }
 
-  deserialize(obj: NetworkObject) {
+  deserialize(obj: NetworkObject, initialize = true) {
     if (this.id != obj.id) throw "Id mismatch during deserialization!";
     if (obj.type != "WorldBounds") throw "Type mismatch during deserialization!";
 

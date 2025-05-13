@@ -169,7 +169,7 @@ export default class Starfield extends StarfieldBase {
   static from(sObj: SerializedStarfield): Starfield {
     const obj = new Starfield({ size: vec2.create() });
     obj._id = sObj.id;
-    obj.deserialize(sObj);
+    obj.deserialize(sObj, true);
 
     obj.generate();
 

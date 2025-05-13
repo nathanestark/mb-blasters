@@ -81,7 +81,7 @@ export default class Special {
     time: RefreshTime
   ): void;
 
-  update(tDelta: number) {}
+  update(time: RefreshTime) {}
 
   serialize(): SerializableSpecial {
     return {

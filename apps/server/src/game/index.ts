@@ -10,6 +10,7 @@ import Starfield from "@shared/game/background/starfield";
 import Planet, { PlanetType } from "@shared/game/background/planet";
 import Ship from "./ship";
 import Asteroid from "@shared/game/asteroid";
+import { NetworkSerializable } from "@shared/game/network";
 
 interface GameProperties extends GameBaseProperties {}
 
@@ -21,6 +22,7 @@ export default class Game extends GameBase {
   _ships: Container;
 
   _worldBounds: WorldBounds;
+  _networkUpdate: NetworkUpdate;
 
   constructor(ioServer: Server, { ...superProps }: GameProperties = {}) {
     // Limit our server's ID range from 0 to half of max.
@@ -31,7 +33,7 @@ export default class Game extends GameBase {
 
     this.setTimeScale(1);
 
-    const networkUpdate = new NetworkUpdate();
+    this._networkUpdate = new NetworkUpdate();
 
     this._players = new Container();
 
@@ -43,7 +45,7 @@ export default class Game extends GameBase {
     this._collidables = new Container();
     this._background = new Container();
     this._ships = new Container();
-    this._collidables.children = [this._background, this._worldBounds, this._ships];
+    this._collidables.children = [this._ships, this._worldBounds];
 
     const collisionDetection = new CollisionDetection([
       this._worldBounds.position,
@@ -53,13 +55,13 @@ export default class Game extends GameBase {
     // Add everything into the game. Order matters for updates.
 
     // Network update first
-    this.addGameObject(networkUpdate);
+    this.addGameObject(this._networkUpdate);
 
     // Then players
     this.addGameObject(this._players);
 
     // Then world objects
-    this.addGameObjects([this._collidables]);
+    this.addGameObjects([this._background, this._collidables]);
 
     // Then collider
     this.addGameObject(collisionDetection);
@@ -69,6 +71,17 @@ export default class Game extends GameBase {
     this.addSmallAsteroids();
     this.addMediumAsteroids();
     this.addLargeAsteroids();
+
+    this.on("gameObjectAdded", (obj) => {
+      if (obj.tags?.includes("network")) {
+        this._networkUpdate.requestUpdate(obj as NetworkSerializable);
+      }
+    });
+    this.on("gameObjectRemoved", (obj) => {
+      if (obj.tags?.includes("network")) {
+        this._networkUpdate.requestDelete(obj as NetworkSerializable);
+      }
+    });
   }
 
   addBackground() {
@@ -196,7 +209,11 @@ export default class Game extends GameBase {
   }
 
   async addPlayer(player: Player): Promise<Player> {
-    return (await this.addGameObject(player, this._players)) as Player;
+    const newPlayer = (await this.addGameObject(player, this._players)) as Player;
+
+    this._networkUpdate.requestUpdate(newPlayer);
+
+    return newPlayer;
   }
 
   async spawnShip(player: Player, config: ShipConfiguration) {
@@ -214,6 +231,9 @@ export default class Game extends GameBase {
     });
     player.ship = newShip;
     newShip.on("destroyed", () => delete player.ship);
+    newShip.on("networkChange", () => {
+      this._networkUpdate.requestUpdate(newShip);
+    });
     return await this.addGameObject(newShip, this._ships);
   }
 }

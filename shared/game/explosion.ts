@@ -4,6 +4,7 @@ import GameBaseObject, {
   SerializedGameBaseObject
 } from "./gameBaseObject";
 import { vec2 } from "gl-matrix";
+import { RefreshTime } from "star-engine";
 
 export type ExplosionTypes = "shipexplosion";
 
@@ -47,8 +48,8 @@ export default class Explosion extends GameBaseObject {
     }, this._timespan);
   }
 
-  update(tDelta: number): void {
-    // super.update(tDelta);
+  update(_time: RefreshTime): void {
+    // super.update(time);
   }
 
   serialize(): SerializedExplosion | null {
@@ -64,13 +65,13 @@ export default class Explosion extends GameBaseObject {
     };
   }
 
-  deserialize(obj: NetworkObject) {
+  deserialize(obj: NetworkObject, initialize = true) {
     if (this.id != obj.id) throw "Id mismatch during deserialization!";
     if (obj.type != "Explosion") throw "Type mismatch during deserialization!";
 
     const pObj = obj as SerializedExplosion;
 
-    super.deserialize(obj);
+    super.deserialize(obj, initialize);
 
     this._color = pObj.color;
     this._type = pObj.explosionType;

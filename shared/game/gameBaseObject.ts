@@ -1,5 +1,5 @@
 import { vec2 } from "gl-matrix";
-import { Math2D, GameObject2D, GameObject } from "star-engine";
+import { GameObject2D, GameObject, RefreshTime } from "star-engine";
 import {
   NetworkObject,
   SerializedVec2,
@@ -30,9 +30,21 @@ export interface GameBaseObjectProperties {
   maxSpeed?: number;
 }
 
+export interface IGameBaseObject {
+  position: vec2;
+  velocity: vec2;
+  totalForce: vec2;
+  rotation: number;
+  radius: number;
+  mass: number;
+  minSpeed: number;
+  maxSpeed?: number;
+  removed: boolean;
+}
+
 export default class GameBaseObject
   extends GameObject
-  implements GameObject2D, NetworkSerializable, NetworkDeserializable
+  implements GameObject2D, NetworkSerializable, NetworkDeserializable, IGameBaseObject
 {
   position: vec2 = vec2.create();
   velocity: vec2 = vec2.create();
@@ -45,6 +57,12 @@ export default class GameBaseObject
   removed: boolean = false;
 
   classTags: Array<string> = [];
+
+  serverPosition: vec2 = vec2.create();
+  serverVelocity: vec2 = vec2.create();
+  serverRotation: number = 0;
+  serverTargetLastUpdateTime: number = 0;
+  serverLerpProgress: number = 0;
 
   constructor({
     position,
@@ -66,36 +84,67 @@ export default class GameBaseObject
     if (typeof mass == "number") this.mass = mass;
     if (typeof minSpeed == "number") this.minSpeed = minSpeed;
     if (typeof maxSpeed == "number") this.maxSpeed = maxSpeed;
+
+    this.serverPosition = vec2.clone(this.position);
+    this.serverVelocity = vec2.clone(this.velocity);
+    this.serverRotation = this.rotation;
   }
 
-  update(tDelta: number) {
-    // Apply our total force to our velocity.
-    if (this.mass > 0) {
-      vec2.scale(this.totalForce, this.totalForce, tDelta / this.mass);
+  update(time: RefreshTime) {
+    const serverTimeAdvance = (time.curTime - this.serverTargetLastUpdateTime) / 1000;
+    const performLerp = this.serverTargetLastUpdateTime > 0 && this.serverLerpProgress < 1;
+    if (performLerp) {
+      this.serverLerpProgress = Math.min(1, this.serverLerpProgress + time.timeAdvance * 5);
     }
+
+    // Apply our total force to our velocities.
+    if (this.mass > 0) {
+      vec2.scale(this.totalForce, this.totalForce, time.timeAdvance / this.mass);
+    }
+
     vec2.add(this.velocity, this.velocity, this.totalForce);
 
-    let sqrSpeed = vec2.sqrLen(this.velocity);
+    const sqrSpeed = this.clampSpeed(this.velocity);
+
+    // Apply our velocity to our position, but don't destroy velocity.
+    let serverPosition = null;
+    if (performLerp) {
+      serverPosition = vec2.clone(this.serverPosition);
+    }
+
+    if (sqrSpeed > 0) {
+      const vel = vec2.clone(this.velocity);
+      vec2.scale(vel, vel, time.timeAdvance);
+      vec2.add(this.position, this.position, vel);
+
+      if (performLerp) {
+        vec2.scale(vel, vec2.clone(this.velocity), serverTimeAdvance);
+        vec2.add(serverPosition!, serverPosition!, vel);
+      }
+    }
+
+    // Lerp Position
+    if (performLerp) {
+      vec2.lerp(this.position, this.position, serverPosition!, this.serverLerpProgress);
+    }
+
+    // Reset force.
+    this.totalForce = vec2.create();
+  }
+
+  private clampSpeed(velocity: vec2) {
+    let sqrSpeed = vec2.sqrLen(velocity);
     // Check if our velocity falls below epsilon.
     if (sqrSpeed <= this.minSpeed * this.minSpeed) {
-      vec2.set(this.velocity, 0, 0);
+      vec2.set(velocity, 0, 0);
       sqrSpeed = 0;
     }
     // Or above
     else if (typeof this.maxSpeed !== "undefined" && sqrSpeed > this.maxSpeed * this.maxSpeed) {
       // Cap our speed.
-      vec2.scale(this.velocity, vec2.normalize(this.velocity, this.velocity), this.maxSpeed);
+      vec2.scale(velocity, vec2.normalize(velocity, velocity), this.maxSpeed);
     }
-
-    // Apply our velocity to our position, but don't destroy velocity.
-    if (sqrSpeed > 0) {
-      const vel = vec2.clone(this.velocity);
-      vec2.scale(vel, vel, tDelta);
-      vec2.add(this.position, this.position, vel);
-    }
-
-    // Reset force.
-    this.totalForce = vec2.create();
+    return sqrSpeed;
   }
 
   serialize(): SerializedGameBaseObject | null {
@@ -115,14 +164,15 @@ export default class GameBaseObject
     };
   }
 
-  deserialize(obj: NetworkObject) {
+  deserialize(obj: NetworkObject, initialize = true) {
     if (this.id != obj.id) throw "Id mismatch during deserialization!";
     // Because this class is inherited, 'type' may be different.
     // if (obj.type != "WorldBounds") throw "Type mismatch during deserialization!";
 
     const pObj = obj as SerializedGameBaseObject;
 
-    deserializeVec2(this.position, pObj.position);
+    if (initialize) deserializeVec2(this.position, pObj.position);
+    deserializeVec2(this.serverPosition, pObj.position);
     deserializeVec2(this.velocity, pObj.velocity);
     deserializeVec2(this.totalForce, pObj.totalForce);
     this.rotation = pObj.rotation;
@@ -130,5 +180,8 @@ export default class GameBaseObject
     this.mass = pObj.mass;
     this.minSpeed = pObj.minSpeed;
     this.maxSpeed = pObj.maxSpeed;
+
+    // Reset lerp progress
+    this.serverLerpProgress = 0;
   }
 }

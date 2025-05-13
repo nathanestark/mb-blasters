@@ -66,13 +66,13 @@ export default class Bullet extends CollidableGameBaseObject {
     };
   }
 
-  deserialize(obj: NetworkObject) {
+  deserialize(obj: NetworkObject, initialize = true) {
     if (this.id != obj.id) throw "Id mismatch during deserialization!";
     if (obj.type != "Bullet") throw "Type mismatch during deserialization!";
 
     const pObj = obj as SerializedBullet;
 
-    super.deserialize(obj);
+    super.deserialize(obj, initialize);
 
     if (this.active) this.owner = this.game.getGameObject(pObj.owner) as CollidableGameBaseObject;
     this._color = pObj.color;

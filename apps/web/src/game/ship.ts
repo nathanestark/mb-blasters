@@ -52,10 +52,13 @@ export default class Ship extends ShipBase {
   }
 
   thrust(on: boolean) {
+    if (this.removed || this._destroying) return;
+
     const context: OnOffEventContext = { on, cancel: false };
     this._emitter.emit("thrust", this, context);
     if (!context.cancel) {
       if (!!this._thrust != on) {
+        this._thrust = on ? this._maxThrust : 0;
         if (on) {
           this._renderer.startAnimation("thrust");
         } else {
@@ -235,7 +238,7 @@ export default class Ship extends ShipBase {
     const image = !shipImage ? null : shipImageFn(shipImage);
     const ship = new Ship(owner, image ? { image } : {});
     ship._id = sObj.id;
-    ship.deserialize(sObj);
+    ship.deserialize(sObj, true);
     return ship;
   }
 }

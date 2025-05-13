@@ -52,13 +52,13 @@ export default class Asteroid extends CollidableGameBaseObject {
     };
   }
 
-  deserialize(obj: NetworkObject) {
+  deserialize(obj: NetworkObject, initialize = true) {
     if (this.id != obj.id) throw "Id mismatch during deserialization!";
     if (obj.type != "Asteroid") throw "Type mismatch during deserialization!";
 
     const pObj = obj as SerializedAsteroid;
 
-    super.deserialize(obj);
+    super.deserialize(obj, initialize);
 
     this._color = pObj.color;
   }

@@ -1,6 +1,6 @@
 import { EventEmitter } from "events";
 import { vec2, vec3, quat } from "gl-matrix";
-import { CircleColliderResult, ColliderResult } from "star-engine";
+import { CircleColliderResult, ColliderResult, RefreshTime } from "star-engine";
 import CollidableGameBaseObject, {
   CollidableGameBaseObjectProperties,
   SerializedCollidableGameBaseObject
@@ -137,7 +137,8 @@ export default class Ship extends CollidableGameBaseObject {
       | "rotateClockwise"
       | "special"
       | "collision"
-      | "collided",
+      | "collided"
+      | "networkChange",
     listener: (ship: Ship, context: T) => void
   ) {
     this._emitter.on(event, listener);
@@ -152,7 +153,7 @@ export default class Ship extends CollidableGameBaseObject {
       | "rotateClockwise"
       | "special"
       | "collision"
-      | "collided",
+      | "networkChange",
     listener: (ship: Ship, context: T) => void
   ) {
     this._emitter.off(event, listener);
@@ -167,16 +168,22 @@ export default class Ship extends CollidableGameBaseObject {
       | "rotateClockwise"
       | "special"
       | "collision"
-      | "collided",
+      | "networkChange",
     listener: (ship: Ship, context: T) => void
   ) {
     this._emitter.once(event, listener);
+  }
+  private emit(event: string, ...args: Array<any>) {
+    // What if one of the args is a context that can be canceled?
+    // No sense in sending an update out if it was canceled.
+    this._emitter.emit(event, ...args);
+    this._emitter.emit("networkChange", this);
   }
 
   destroy() {
     if (this._destroying) return;
 
-    this._emitter.emit("destroying", this);
+    this.emit("destroying", this);
     this._destroying = true;
     this._firing = false;
     this._thrust = 0;
@@ -192,14 +199,14 @@ export default class Ship extends CollidableGameBaseObject {
 
     this.removed = true;
     if (this.game) this.game.removeGameObject(this);
-    this._emitter.emit("destroyed", this);
+    this.emit("destroyed", this);
   }
 
   fire(on: boolean) {
     if (this.removed || this._destroying) return;
 
     const context: OnOffEventContext = { on, cancel: false };
-    this._emitter.emit("fire", this, context);
+    this.emit("fire", this, context);
     if (!context.cancel) this._firing = on;
   }
 
@@ -207,7 +214,7 @@ export default class Ship extends CollidableGameBaseObject {
     if (this.removed || this._destroying) return;
 
     const context: OnOffEventContext = { on, cancel: false };
-    this._emitter.emit("thrust", this, context);
+    this.emit("thrust", this, context);
     if (!context.cancel) this._thrust = on ? this._maxThrust : 0;
   }
 
@@ -215,7 +222,7 @@ export default class Ship extends CollidableGameBaseObject {
     if (this.removed || this._destroying) return;
 
     const context: OnOffEventContext = { on, cancel: false };
-    this._emitter.emit("rotateCounterClockwise", this, context);
+    this.emit("rotateCounterClockwise", this, context);
     if (!context.cancel) this._rotate = on ? -this._maxRotate : 0;
   }
 
@@ -223,7 +230,7 @@ export default class Ship extends CollidableGameBaseObject {
     if (this.removed || this._destroying) return;
 
     const context: OnOffEventContext = { on, cancel: false };
-    this._emitter.emit("rotateClockwise", this, context);
+    this.emit("rotateClockwise", this, context);
     if (!context.cancel) this._rotate = on ? this._maxRotate : 0;
   }
 
@@ -231,7 +238,7 @@ export default class Ship extends CollidableGameBaseObject {
     if (this.removed || this._destroying) return;
 
     const context: OnOffEventContext = { on, cancel: false };
-    this._emitter.emit("special", this, context);
+    this.emit("special", this, context);
     if (!context.cancel) {
       if (on) {
         this._special.on();
@@ -241,8 +248,8 @@ export default class Ship extends CollidableGameBaseObject {
     }
   }
 
-  update(tDelta: number) {
-    this._special.update(tDelta);
+  update(time: RefreshTime) {
+    this._special.update(time);
 
     // Add our rotation
     this.rotation += this._rotate;
@@ -259,7 +266,7 @@ export default class Ship extends CollidableGameBaseObject {
       vec2.add(this.totalForce, this.totalForce, vec2.fromValues(temp[0], temp[1]));
     }
 
-    super.update(tDelta);
+    super.update(time);
   }
 
   onCollision(thisObj: ColliderResult, otherObj: ColliderResult) {
@@ -274,7 +281,7 @@ export default class Ship extends CollidableGameBaseObject {
     super.onCollision(thisObj, otherObj);
 
     const context = { thisObj, otherObj, cancel: false };
-    this._emitter.emit("collision", this, context);
+    this.emit("collision", this, context);
 
     if (!context.cancel && otherObj.owner instanceof CollidableGameBaseObject) {
       // Any collision destroys our ship.
@@ -284,7 +291,7 @@ export default class Ship extends CollidableGameBaseObject {
 
   onCollided(thisObj: CircleColliderResult, otherObj: ColliderResult) {
     const context = { thisObj, otherObj, cancel: false };
-    this._emitter.emit("collided", this, context);
+    this.emit("collided", this, context);
 
     // If we're destroyed, don't adjust overlap.
     if (this._destroying) return;
@@ -323,13 +330,13 @@ export default class Ship extends CollidableGameBaseObject {
     };
   }
 
-  deserialize(obj: NetworkObject) {
+  deserialize(obj: NetworkObject, initialize = true) {
     if (this.id != obj.id) throw "Id mismatch during deserialization!";
     if (obj.type != "Ship") throw "Type mismatch during deserialization!";
 
     const pObj = obj as SerializedShip;
 
-    super.deserialize(obj);
+    super.deserialize(obj, initialize);
 
     this._type = pObj.shipType;
     if (this._special.type != pObj.special.type) {

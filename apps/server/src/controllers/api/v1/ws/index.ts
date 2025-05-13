@@ -20,13 +20,11 @@ export const handleConnection = (game: Game) => (socket: Socket) => {
       console.log("ECHO", msg);
       callback(`'${msg}' received`);
     });
-    // Deal with dead reckoning ping
-    socket.on("drPing", (callback: () => void) => callback());
 
     // Start listening for messages from the client.
     socket.onAny((eventName: string, ...args: Array<any>) => {
-      // Ignore initializePlayer, echo and drPing
-      if (["initializePlayer", "echo", "drPing"].includes(eventName)) return;
+      // Ignore initializePlayer, and echo
+      if (["initializePlayer", "echo"].includes(eventName)) return;
 
       const handler = MESSAGE_HANDLERS[eventName];
       if (!handler) socket.emit("error", `Event '${eventName}' doesn't exist.`);
@@ -43,6 +41,10 @@ export const handleConnection = (game: Game) => (socket: Socket) => {
       player.disconnect();
     });
   })();
+};
+
+export const drPing = (game: Game, player: Player, callback: () => void) => {
+  callback();
 };
 
 export const updatePlayer = (game: Game, player: Player, obj: PlayerUpdate) => {
@@ -81,6 +83,7 @@ export const special = (game: Game, player: Player, on: boolean) => {
 };
 
 const MESSAGE_HANDLERS: Record<string, (game: Game, ...args: Array<any>) => void> = {
+  drPing,
   updatePlayer,
   spawnShip,
   rotateCounterClockwise,

@@ -64,7 +64,7 @@ export default class Explosion extends ExplosionBase {
     const image = !explosionImage ? null : explosionImageFn(explosionImage);
     const obj = new Explosion(image ? { image } : {});
     obj._id = sObj.id;
-    obj.deserialize(sObj);
+    obj.deserialize(sObj, true);
     return obj;
   }
 }

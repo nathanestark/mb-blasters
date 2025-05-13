@@ -56,7 +56,7 @@ export default class Planet extends PlanetBase {
 
     const obj = new Planet(planetImage!, { size: vec2.create() });
     obj._id = sObj.id;
-    obj.deserialize(sObj);
+    obj.deserialize(sObj, true);
 
     return obj;
   }

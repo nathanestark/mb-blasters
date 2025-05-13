@@ -50,10 +50,10 @@ export default class Starfield extends ProceduralObject {
     };
   }
 
-  deserialize(obj: NetworkObject) {
+  deserialize(obj: NetworkObject, initialize = true) {
     if (this.id != obj.id) throw "Id mismatch during deserialization!";
 
-    super.deserialize(obj);
+    super.deserialize(obj, initialize);
 
     const pObj = obj as SerializedStarfield;
 

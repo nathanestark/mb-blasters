@@ -6,16 +6,21 @@ export interface NetworkSerializable extends GameObject {
 }
 
 export interface NetworkDeserializable extends GameObject {
-  deserialize: (obj: NetworkObject) => void;
+  serverTargetLastUpdateTime: number;
+  deserialize: (obj: NetworkObject, initialize?: boolean) => void;
 }
 
 export interface NetworkObject {
   type: string;
   id: number;
+  __delete?: boolean;
 }
 
 export interface NetworkUpdateData {
+  fullUpdate: boolean;
   timestamp: number;
+  minSimUpdateTime: number;
+  lastSimUpdateTime: number;
   objects: Array<NetworkObject>;
 }
 

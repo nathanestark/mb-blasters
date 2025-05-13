@@ -17,7 +17,7 @@ export default class WorldBounds extends WorldBoundsBase {
   static from(sObj: SerializedWorldBounds): WorldBounds {
     const obj = new WorldBounds();
     obj._id = sObj.id;
-    obj.deserialize(sObj);
+    obj.deserialize(sObj, true);
     return obj;
   }
 }
