@@ -1,6 +1,15 @@
 import { GameObject, RefreshTime } from "star-engine";
 import Game from "./index";
 import { NetworkObject, NetworkSerializable, NetworkUpdateData } from "@shared/game/network";
+import Player from "./player";
+import EventEmitter from "events";
+
+export type RequestUpdateTypes = "full" | "delete" | "default" | "noLerp";
+
+interface ObjUpdate {
+  type: RequestUpdateTypes;
+  obj: NetworkSerializable;
+}
 
 export interface NetworkUpdateProperties {
   minUpdateTime?: number;
@@ -8,9 +17,11 @@ export interface NetworkUpdateProperties {
 
 export default class NetworkUpdate extends GameObject {
   _nextUpdateTime: number;
-  _minUpdateTime: number = 1000;
+  _minUpdateTime: number = 2000;
 
-  _updates: Array<NetworkSerializable | number> = [];
+  _updates: Array<ObjUpdate> = [];
+
+  _newPlayers: Array<Player> = [];
 
   constructor({ minUpdateTime }: NetworkUpdateProperties = {}) {
     super();
@@ -20,30 +31,51 @@ export default class NetworkUpdate extends GameObject {
     if (typeof minUpdateTime !== "undefined") this._minUpdateTime = minUpdateTime;
   }
 
-  requestUpdate(obj: NetworkSerializable) {
-    this._updates.push(obj);
+  requestUpdate(obj: NetworkSerializable, type: RequestUpdateTypes = "default") {
+    this._updates.push({ type: type, obj });
   }
-  requestDelete(obj: NetworkSerializable) {
-    this._updates.push(obj.id);
+
+  updateNewPlayer(player: Player) {
+    this._newPlayers.push(player);
   }
 
   update(time: RefreshTime) {
-    if (this._nextUpdateTime < time.curTime) {
+    // Let any new players know the full state.
+    if (this._newPlayers.length > 0) {
       const objs = this.game.filter("network") as Array<NetworkSerializable>;
-      this.issueNetworkUpdate(time, objs, true);
-      this._nextUpdateTime = time.curTime + this._minUpdateTime;
-    } else if (this._updates.length > 0) {
-      this.issueNetworkUpdate(time, this._updates, false);
+      const targets = this._newPlayers.map((player) => player.socket);
+      this.issueNetworkUpdate(
+        time,
+        objs.map((obj) => ({ type: "full", obj })),
+        targets
+      );
+      this._newPlayers = [];
     }
-    // Reset updates.
+
+    let objs: Array<ObjUpdate> = [...this._updates];
     this._updates = [];
+
+    if (this._nextUpdateTime < time.curTime) {
+      objs = (this.game.filter("networkF1") as Array<NetworkSerializable>).reduce((list, obj) => {
+        // Only add it in if it isn't already there.
+        if (!list.some((item) => item.obj.id == obj.id)) {
+          list.push({ type: "default", obj });
+        }
+        return list;
+      }, objs);
+      this._nextUpdateTime = time.curTime + this._minUpdateTime;
+    }
+
+    if (objs.length) {
+      this.issueNetworkUpdate(time, objs, [(this.game as Game).ioServer]);
+      objs.forEach((obj) => {
+        if (obj.type == "delete") return;
+        obj.obj.setPreviousState();
+      });
+    }
   }
 
-  issueNetworkUpdate(
-    time: RefreshTime,
-    objs: Array<NetworkSerializable | number>,
-    fullUpdate: boolean
-  ) {
+  issueNetworkUpdate(time: RefreshTime, objs: Array<ObjUpdate>, targets: Array<EventEmitter>) {
     // console.log(
     //   time.curTime - time.lastTime,
     //   this._nextUpdateTime,
@@ -51,24 +83,28 @@ export default class NetworkUpdate extends GameObject {
     //   this._minUpdateTime
     // );
     const sObjs = objs.reduce((memo, obj) => {
-      if (typeof obj === "number") {
-        return [...memo, { id: obj, type: "delete" }];
+      if (obj.type == "delete") {
+        return [...memo, { id: obj.obj.id, type: obj.type, __delete: true }];
       }
+      // Don't send it if nothing was changed.
+      if (obj.type != "full" && !obj.obj.hasChanged) return memo;
 
-      const sObj = obj.serialize();
+      const sObj = obj.obj.serialize(obj.type != "full");
       if (!sObj) return memo;
+      if (obj.type == "noLerp") sObj.__noLerp = true;
       return [...memo, sObj];
     }, [] as Array<NetworkObject>);
 
+    // Nothing to send?
+    if (sObjs.length == 0) return;
+
     const data: NetworkUpdateData = {
-      fullUpdate: fullUpdate,
       timestamp: Date.now(),
       minSimUpdateTime: this.game._minUpdateTime,
       lastSimUpdateTime: time.curTime,
       objects: sObjs
     };
 
-    const ioServer = (this.game as Game).ioServer;
-    ioServer.emit("networkUpdate", data);
+    targets.forEach((target) => target.emit("networkUpdate", data));
   }
 }

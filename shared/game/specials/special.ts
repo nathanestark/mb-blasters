@@ -1,9 +1,15 @@
 import { Camera, RefreshTime } from "star-engine";
 import Ship from "../ship";
+import {
+  addSerializableProperty,
+  deserializeSerializables,
+  SerializableProperty,
+  serializeSerializables
+} from "../network";
 
 export type SpecialType = "none" | "warp" | "shield" | "grav" | "antigrav" | "missile" | "cloak";
 
-export interface SerializableSpecial {
+export interface SerializedSpecial {
   type: SpecialType;
   power: number;
 }
@@ -13,9 +19,14 @@ export default class Special {
   owner: Ship;
   power: number = 50;
 
+  serializable: Array<SerializableProperty> = [];
+
   constructor(owner: Ship, power: number) {
     this.owner = owner;
     this.power = power;
+
+    this.addSerializableProperty("type");
+    this.addSerializableProperty("power");
   }
 
   on() {}
@@ -83,15 +94,37 @@ export default class Special {
 
   update(time: RefreshTime) {}
 
-  serialize(): SerializableSpecial {
-    return {
-      type: this.type,
-      power: this.power
-    };
+  equals(previousState: Record<string, any>) {
+    return this.serializable.every((val) => {
+      // I don't think optional matters here.
+      // if (!val.optional) return false;
+      if (!val.equals) return previousState[val.name] == (this as any)[val.name];
+      return val.equals(previousState[val.name], (this as any)[val.name]);
+    });
   }
 
-  deserialize(obj: SerializableSpecial) {
-    this.type = obj.type;
-    this.power = obj.power;
+  protected addSerializableProperty(
+    name: string,
+    options?: {
+      serializedName?: string;
+      optional?: boolean;
+      init?: () => any;
+      copy?: (to: any, from: any) => any;
+      serialize?: (value: any, changesOnly: boolean) => any;
+      deserialize?: (sValue: any, initialize?: boolean) => void;
+      equals?: (a: any, b: any) => boolean;
+    }
+  ) {
+    addSerializableProperty(this.serializable, name, options);
+  }
+
+  serialize(previousState: Record<string, any>, changesOnly = false): SerializedSpecial {
+    return {
+      ...serializeSerializables(this.serializable, previousState, this, changesOnly)
+    } as SerializedSpecial;
+  }
+
+  deserialize(obj: SerializedSpecial, initialize = true) {
+    deserializeSerializables(this.serializable, obj, this, initialize);
   }
 }

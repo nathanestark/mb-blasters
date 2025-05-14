@@ -1,5 +1,15 @@
 import { GameObject } from "star-engine";
-import { NetworkObject, NetworkSerializable, NetworkDeserializable } from "./network";
+import {
+  NetworkObject,
+  NetworkSerializable,
+  NetworkDeserializable,
+  SerializableProperty,
+  addSerializableProperty,
+  serializeSerializables,
+  hasPreviousStateChanged,
+  setPreviousState,
+  deserializeSerializables
+} from "./network";
 
 export interface PlayerProperties {
   name?: string;
@@ -17,27 +27,43 @@ export default class Player
   classTags: Array<string> = [];
   serverTargetLastUpdateTime: number = 0;
 
+  serializable: Array<SerializableProperty> = [];
+  _previousState: Record<string, any> = {};
+
   constructor({ name }: PlayerProperties = {}) {
     super();
     this.classTags.push("player", "network");
 
     if (name) this.name = name;
+
+    addSerializableProperty(this.serializable, "name");
+    this.setPreviousState();
   }
 
-  serialize(): SerializedPlayer {
+  gameObjectAdded(): void {
+    this.setPreviousState();
+  }
+
+  get hasChanged() {
+    return hasPreviousStateChanged(this.serializable, this._previousState, this);
+  }
+
+  setPreviousState() {
+    setPreviousState(this.serializable, this._previousState, this);
+  }
+
+  serialize(changesOnly = false): SerializedPlayer {
     return {
       type: "Player",
       id: this.id,
-      name: this.name
-    };
+      ...serializeSerializables(this.serializable, this._previousState, this, changesOnly)
+    } as SerializedPlayer;
   }
 
   deserialize(obj: NetworkObject, initialize = true) {
     if (this.id != obj.id) throw "Id mismatch during deserialization!";
     if (obj.type != "Player") throw "Type mismatch during deserialization!";
 
-    const pObj = obj as SerializedPlayer;
-
-    this.name = pObj.name;
+    deserializeSerializables(this.serializable, obj, this, initialize);
   }
 }

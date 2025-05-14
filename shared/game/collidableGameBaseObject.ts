@@ -40,6 +40,8 @@ export default class CollidableGameBaseObject
     this._collider = new CircleCollider(this);
 
     this.children = [this._collider];
+
+    this.addSerializableProperty("elasticity");
   }
 
   onCollision(thisObj: ColliderResult, otherObj: ColliderResult) {
@@ -115,16 +117,13 @@ export default class CollidableGameBaseObject
     }
   }
 
-  serialize(): SerializedCollidableGameBaseObject | null {
-    const sObj = super.serialize();
+  serialize(changesOnly = false): SerializedCollidableGameBaseObject | null {
+    const sObj = super.serialize(changesOnly);
     if (!sObj) return null;
     return {
       ...sObj,
-      type: "CollidableGameBaseObject", // Should get overwritten
-      id: this.id,
-
-      elasticity: this.elasticity
-    };
+      type: "CollidableGameBaseObject" // Should get overwritten
+    } as SerializedCollidableGameBaseObject;
   }
 
   deserialize(obj: NetworkObject, initialize = true) {
@@ -132,9 +131,5 @@ export default class CollidableGameBaseObject
     // Because this class is inherited, 'type' may be different.
     // if (obj.type != "WorldBounds") throw "Type mismatch during deserialization!";
     super.deserialize(obj, initialize);
-
-    const pObj = obj as SerializedCollidableGameBaseObject;
-
-    this.elasticity = pObj.elasticity;
   }
 }

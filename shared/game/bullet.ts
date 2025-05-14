@@ -29,10 +29,22 @@ export default class Bullet extends CollidableGameBaseObject {
       ...superProps
     });
     this.classTags.push("bullet");
+    // Don't perform periodic network updates on bullets.
+    // They will look smoother if we just let the client deal with them.
+    this.classTags = this.classTags.filter((tag) => tag != "networkF1");
 
     this.owner = owner;
 
     if (color) this._color = color;
+
+    this.addSerializableProperty("owner", {
+      serialize: (value: CollidableGameBaseObject) => value.id,
+      deserialize: (sValue: number) => {
+        if (this.active) this.owner = this.game.getGameObject(sValue) as CollidableGameBaseObject;
+      },
+      equals: (a: CollidableGameBaseObject, b: CollidableGameBaseObject) => a.id == b.id
+    });
+    this.addSerializableProperty("_color", { serializedName: "color" });
   }
 
   onCollision(thisObj: ColliderResult, otherObj: ColliderResult) {
@@ -54,27 +66,19 @@ export default class Bullet extends CollidableGameBaseObject {
     super.onCollision(thisObj, otherObj);
   }
 
-  serialize(): SerializedBullet | null {
-    const sObj = super.serialize();
+  serialize(changesOnly = false): SerializedBullet | null {
+    const sObj = super.serialize(changesOnly);
     if (!sObj) return null;
     return {
       ...sObj,
-      type: "Bullet",
-
-      owner: this.owner.id,
-      color: this._color
-    };
+      type: "Bullet"
+    } as SerializedBullet;
   }
 
   deserialize(obj: NetworkObject, initialize = true) {
     if (this.id != obj.id) throw "Id mismatch during deserialization!";
     if (obj.type != "Bullet") throw "Type mismatch during deserialization!";
 
-    const pObj = obj as SerializedBullet;
-
     super.deserialize(obj, initialize);
-
-    if (this.active) this.owner = this.game.getGameObject(pObj.owner) as CollidableGameBaseObject;
-    this._color = pObj.color;
   }
 }

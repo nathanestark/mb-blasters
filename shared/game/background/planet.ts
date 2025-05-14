@@ -30,29 +30,23 @@ export default class Planet extends BackgroundObject {
     this.size = size;
 
     if (type) this.type = type;
+
+    this.addSerializableVec2Property("size");
+    this.addSerializableProperty("type", { serializedName: "planetType" });
   }
 
-  serialize(): SerializedPlanet | null {
-    const sObj = super.serialize();
+  serialize(changesOnly = false): SerializedPlanet | null {
+    const sObj = super.serialize(changesOnly);
     if (!sObj) return null;
     return {
       ...sObj,
-      type: "Planet",
-      id: this.id,
-
-      size: serializeVec2(this.size),
-      planetType: this.type
-    };
+      type: "Planet"
+    } as SerializedPlanet;
   }
 
   deserialize(obj: NetworkObject, initialize = true) {
     if (this.id != obj.id) throw "Id mismatch during deserialization!";
 
     super.deserialize(obj, initialize);
-
-    const pObj = obj as SerializedPlanet;
-
-    deserializeVec2(this.size, pObj.size);
-    this.type = pObj.planetType;
   }
 }

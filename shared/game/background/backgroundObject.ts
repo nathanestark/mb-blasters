@@ -1,12 +1,18 @@
 import { vec2 } from "gl-matrix";
 import { GameObject, RefreshTime } from "star-engine";
 import {
-  NetworkObject,
-  SerializedVec2,
   NetworkSerializable,
   NetworkDeserializable,
+  NetworkObject,
+  SerializedVec2,
   serializeVec2,
-  deserializeVec2
+  deserializeVec2,
+  SerializableProperty,
+  addSerializableProperty,
+  hasPreviousStateChanged,
+  setPreviousState,
+  serializeSerializables,
+  deserializeSerializables
 } from "../network";
 
 export interface SerializedBackgroundObject extends NetworkObject {
@@ -39,6 +45,9 @@ export default class BackgroundObject
 
   classTags: Array<string> = [];
 
+  serializable: Array<SerializableProperty> = [];
+  _previousState: Record<string, any> = {};
+
   constructor({ position, velocity, rotation, repeat, depth }: BackgroundObjectProperties = {}) {
     super();
 
@@ -49,6 +58,64 @@ export default class BackgroundObject
     if (typeof rotation === "number") this.rotation = rotation;
     if (typeof repeat !== "undefined") this.repeat = repeat;
     if (typeof depth === "number") this.depth = depth;
+    this.addSerializableVec2Property("position");
+    this.addSerializableVec2Property("velocity");
+    this.addSerializableProperty("rotation");
+    this.addSerializableProperty("repeat");
+    this.addSerializableProperty("depth");
+
+    this.setPreviousState();
+  }
+
+  gameObjectAdded(): void {
+    this.setPreviousState();
+  }
+
+  protected addSerializableVec2Property(
+    name: string,
+    options?: {
+      serializedName?: string;
+      optional?: boolean;
+      init?: () => vec2;
+      copy?: (to: vec2, from: vec2) => void;
+      serialize?: (value: vec2, changesOnly: boolean) => SerializedVec2;
+      deserialize?: (sValue: SerializedVec2, initialize?: boolean) => void;
+      equals?: (a: vec2, b: vec2) => boolean;
+    }
+  ) {
+    this.addSerializableProperty(name, {
+      optional: options?.optional,
+      init: options?.init || vec2.create,
+      copy: options?.copy || vec2.copy,
+      serialize: options?.serialize || serializeVec2,
+      deserialize:
+        options?.deserialize ||
+        ((source: SerializedVec2) => deserializeVec2((this as any)[name], source)),
+      equals: vec2.equals
+    });
+  }
+
+  protected addSerializableProperty(
+    name: string,
+    options?: {
+      serializedName?: string;
+      optional?: boolean;
+      init?: () => any;
+      copy?: (to: any, from: any) => void;
+      serialize?: (value: any, changesOnly: boolean) => any;
+      deserialize?: (sValue: any, initialize?: boolean) => void;
+      equals?: (a: any, b: any) => boolean;
+    }
+  ) {
+    addSerializableProperty(this.serializable, name, options);
+  }
+
+  get hasChanged() {
+    return hasPreviousStateChanged(this.serializable, this._previousState, this);
+  }
+
+  setPreviousState() {
+    setPreviousState(this.serializable, this._previousState, this);
   }
 
   update(time: RefreshTime) {
@@ -60,28 +127,17 @@ export default class BackgroundObject
     }
   }
 
-  serialize(): SerializedBackgroundObject | null {
+  serialize(changesOnly = false): SerializedBackgroundObject | null {
     return {
       type: "BackgroundObject", // Should get overwritten
       id: this.id,
-
-      position: serializeVec2(this.position),
-      velocity: serializeVec2(this.velocity),
-      rotation: this.rotation,
-      repeat: this.repeat,
-      depth: this.depth
-    };
+      ...serializeSerializables(this.serializable, this._previousState, this, changesOnly)
+    } as SerializedBackgroundObject;
   }
 
   deserialize(obj: NetworkObject, initialize = true) {
     if (this.id != obj.id) throw "Id mismatch during deserialization!";
 
-    const pObj = obj as SerializedBackgroundObject;
-
-    deserializeVec2(this.position, pObj.position);
-    deserializeVec2(this.velocity, pObj.velocity);
-    this.rotation = pObj.rotation;
-    this.repeat = pObj.repeat;
-    this.depth = pObj.depth;
+    deserializeSerializables(this.serializable, obj, this, initialize);
   }
 }

@@ -7,6 +7,7 @@ export { SerializedBullet, BulletProperties };
 
 export default class Bullet extends BulletBase {
   draw(camera: DefaultCamera, _time: RefreshTime) {
+    camera.context.save();
     camera.context.translate(this.position[0], this.position[1]);
     camera.context.rotate(this.rotation);
 
@@ -15,6 +16,7 @@ export default class Bullet extends BulletBase {
 
     camera.context.arc(0, 0, this.radius, 0, Math2D.twoPi);
     camera.context.fill();
+    camera.context.restore();
   }
 
   static from(owner: Ship, sObj: SerializedBullet): Bullet {

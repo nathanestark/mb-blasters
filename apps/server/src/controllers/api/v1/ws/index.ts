@@ -6,14 +6,18 @@ import { ShipConfiguration } from "@shared/game/ship";
 import PlayerUpdate from "@shared/game/playerUpdate";
 
 export const handleConnection = (game: Game) => (socket: Socket) => {
-  console.log("Player Connected");
+  console.log("Player Connecting...");
   (async function processConnection() {
     const player = await game.addPlayer(new Player(socket));
     // Deal with the initialize player call
-    socket.on("initializePlayer", (callback: (player: SerializedPlayer) => void) => {
-      // Reply back with a player created message
-      callback(player.serialize());
+    await new Promise<void>((resolve) => {
+      socket.once("initializePlayer", (callback: (player: SerializedPlayer) => void) => {
+        // Reply back with a player created message
+        callback(player.serialize());
+        resolve();
+      });
     });
+    console.log("...connected");
 
     // Deal with echo
     socket.on("echo", (msg: string, callback: (reply: string) => void) => {
@@ -40,6 +44,11 @@ export const handleConnection = (game: Game) => (socket: Socket) => {
     socket.on("disconnect", () => {
       player.disconnect();
     });
+
+    // Issue updates to everyone about this player, and send the initial
+    // gamestate to the player.
+    game._networkUpdate.updateNewPlayer(player);
+    game._networkUpdate.requestUpdate(player);
   })();
 };
 

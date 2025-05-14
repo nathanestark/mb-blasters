@@ -12,8 +12,7 @@ const PlayerList: FC = () => {
 
   const players: Array<Player> = useMemo(() => {
     const game = getGame();
-    if (!game) return [];
-    return (game.players.children || []) as Array<Player>;
+    return (game?.players?.children || []) as Array<Player>;
   }, [getGame]);
 
   const playerId = useMemo(() => {

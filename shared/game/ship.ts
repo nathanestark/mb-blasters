@@ -5,13 +5,13 @@ import CollidableGameBaseObject, {
   CollidableGameBaseObjectProperties,
   SerializedCollidableGameBaseObject
 } from "./collidableGameBaseObject";
-import { NetworkObject } from "./network";
+import { hasPreviousStateChanged, NetworkObject, setPreviousState } from "./network";
 import Player from "./player";
 import Bullet from "./bullet";
 import {
   Special,
   SpecialType,
-  SerializableSpecial,
+  SerializedSpecial,
   None,
   Shield,
   Warp,
@@ -45,18 +45,18 @@ export interface ShipConfiguration {
 }
 
 export interface SerializedShip extends SerializedCollidableGameBaseObject {
-  color: string;
-  thrust: number;
-  rotate: number;
-  firing: boolean;
+  _color: string;
+  _thrust: number;
+  _rotate: number;
+  _firing: boolean;
   owner: number;
-  destroying: boolean;
+  _destroying: boolean;
 
-  shipType: ShipType;
-  special: SerializableSpecial;
-  bulletSpeed: number;
-  maxThrust: number;
-  maxRotate: number;
+  _shipType: ShipType;
+  _special: SerializedSpecial;
+  _bulletSpeed: number;
+  _maxThrust: number;
+  _maxRotate: number;
 }
 
 export interface ShipProperties extends CollidableGameBaseObjectProperties {
@@ -125,6 +125,56 @@ export default class Ship extends CollidableGameBaseObject {
       special || "none",
       typeof specialPower === "undefined" ? 50 : specialPower
     );
+
+    this.addSerializableProperty("_color");
+    this.addSerializableProperty("_thrust", {
+      deserialize: (sValue: number) => {
+        this.thrust(sValue > 0);
+        this._thrust = sValue;
+      }
+    });
+    this.addSerializableProperty("_rotate");
+    this.addSerializableProperty("_firing");
+    this.addSerializableProperty("owner", {
+      serialize: (value: Player) => value.id,
+      deserialize: (sValue: number) => {
+        if (this.active) this.owner = this.game.getGameObject(sValue) as Player;
+      },
+      equals: (a: Player, b: Player) => a.id == b.id
+    });
+    this.addSerializableProperty("_destroying", {
+      deserialize: (sValue: boolean) => {
+        if (!this._destroying && sValue) {
+          this.destroy();
+        }
+        this._destroying = sValue;
+      }
+    });
+
+    this.addSerializableProperty("_type", { serializedName: "_shipType" });
+    this.addSerializableProperty("_special", {
+      init: () => {
+        return {};
+      },
+      copy: (to: Record<string, any>, from: Special) => {
+        setPreviousState(from.serializable, to, from);
+      },
+      serialize: (value: Special, changesOnly: boolean) => {
+        return value.serialize(this._previousState["_special"] as Record<string, any>, changesOnly);
+      },
+      deserialize: (sValue: SerializedSpecial) => {
+        if (typeof sValue.type !== "undefined" && this._special.type != sValue.type) {
+          this._special = this.createSpecial(sValue.type, 0);
+        }
+        this._special.deserialize(sValue);
+      },
+      equals: (a: Record<string, any>, b: Special) => {
+        return b.equals(a);
+      }
+    });
+    this.addSerializableProperty("_bulletSpeed");
+    this.addSerializableProperty("_maxThrust");
+    this.addSerializableProperty("_maxRotate");
   }
 
   on<T extends ShipEventContext>(
@@ -177,8 +227,12 @@ export default class Ship extends CollidableGameBaseObject {
     // What if one of the args is a context that can be canceled?
     // No sense in sending an update out if it was canceled.
     this._emitter.emit(event, ...args);
-    this._emitter.emit("networkChange", this);
+    if (!["collision", "collided"].includes(event)) {
+      this._emitter.emit("networkChange", this);
+    }
   }
+
+  requestUpdate?(): void;
 
   destroy() {
     if (this._destroying) return;
@@ -307,56 +361,20 @@ export default class Ship extends CollidableGameBaseObject {
     return new None(this, power);
   }
 
-  serialize(): SerializedShip | null {
-    const sObj = super.serialize();
+  serialize(changesOnly = false): SerializedShip | null {
+    const sObj = super.serialize(changesOnly);
     if (!sObj) return null;
 
     return {
       ...sObj,
-      type: "Ship",
-      shipType: this._type,
-      special: this._special.serialize(),
-
-      owner: this.owner.id,
-      color: this._color,
-      thrust: this._thrust,
-      rotate: this._rotate,
-      firing: this._firing,
-      destroying: this._destroying,
-
-      bulletSpeed: this._bulletSpeed,
-      maxThrust: this._maxThrust,
-      maxRotate: this._maxRotate
-    };
+      type: "Ship"
+    } as SerializedShip;
   }
 
   deserialize(obj: NetworkObject, initialize = true) {
     if (this.id != obj.id) throw "Id mismatch during deserialization!";
     if (obj.type != "Ship") throw "Type mismatch during deserialization!";
 
-    const pObj = obj as SerializedShip;
-
     super.deserialize(obj, initialize);
-
-    this._type = pObj.shipType;
-    if (this._special.type != pObj.special.type) {
-      this._special = this.createSpecial(pObj.special.type, 0);
-    }
-    this._special.deserialize(pObj.special);
-
-    if (this.active) this.owner = this.game.getGameObject(pObj.owner) as Player;
-    this._color = pObj.color;
-    this.thrust(pObj.thrust > 0);
-    this._thrust = pObj.thrust;
-    this._rotate = pObj.rotate;
-    this._firing = pObj.firing;
-    if (!this._destroying && pObj.destroying) {
-      this.destroy();
-    }
-    this._destroying = pObj.destroying;
-
-    this._bulletSpeed = pObj.bulletSpeed;
-    this._maxThrust = pObj.maxThrust;
-    this._maxRotate = pObj.maxRotate;
   }
 }

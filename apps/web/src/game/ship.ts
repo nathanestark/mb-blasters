@@ -229,12 +229,12 @@ export default class Ship extends ShipBase {
   }
 
   static from(owner: Player, resources: Resources, sObj: SerializedShip): Ship {
-    const shipImage = resources.get(sObj.shipType)?.image;
+    const shipImage = resources.get(sObj._shipType)?.image;
     const shipImageFn = {
       deltaship: Ship.deltaShip,
       sweepship: Ship.sweepShip,
       bustership: Ship.busterShip
-    }[sObj.shipType];
+    }[sObj._shipType];
     const image = !shipImage ? null : shipImageFn(shipImage);
     const ship = new Ship(owner, image ? { image } : {});
     ship._id = sObj.id;

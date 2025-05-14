@@ -6,17 +6,23 @@ import {
   NetworkSerializable,
   NetworkDeserializable,
   serializeVec2,
-  deserializeVec2
+  deserializeVec2,
+  SerializableProperty,
+  hasPreviousStateChanged,
+  setPreviousState,
+  addSerializableProperty,
+  serializeSerializables,
+  deserializeSerializables
 } from "./network";
 
 export interface SerializedGameBaseObject extends NetworkObject {
-  position: SerializedVec2;
-  velocity: SerializedVec2;
-  totalForce: SerializedVec2;
-  rotation: number;
-  radius: number;
-  mass: number;
-  minSpeed: number;
+  position?: SerializedVec2;
+  velocity?: SerializedVec2;
+  totalForce?: SerializedVec2;
+  rotation?: number;
+  radius?: number;
+  mass?: number;
+  minSpeed?: number;
   maxSpeed?: number;
 }
 
@@ -38,7 +44,7 @@ export interface IGameBaseObject {
   radius: number;
   mass: number;
   minSpeed: number;
-  maxSpeed?: number;
+  maxSpeed: number;
   removed: boolean;
 }
 
@@ -53,16 +59,18 @@ export default class GameBaseObject
   radius: number = 1;
   mass: number = 1;
   minSpeed: number = 0.1;
-  maxSpeed?: number;
+  maxSpeed: number = 1000000;
   removed: boolean = false;
 
   classTags: Array<string> = [];
 
   serverPosition: vec2 = vec2.create();
-  serverVelocity: vec2 = vec2.create();
-  serverRotation: number = 0;
   serverTargetLastUpdateTime: number = 0;
   serverLerpProgress: number = 0;
+  initializeFromServer: boolean = false;
+
+  serializable: Array<SerializableProperty> = [];
+  _previousState: Record<string, any> = {};
 
   constructor({
     position,
@@ -75,7 +83,7 @@ export default class GameBaseObject
   }: GameBaseObjectProperties = {}) {
     super();
 
-    this.classTags = ["gamebase", "gamebaseObject", "network"];
+    this.classTags = ["gamebase", "gamebaseObject", "network", "networkF1"];
 
     if (position) this.position = position;
     if (velocity) this.velocity = velocity;
@@ -86,15 +94,38 @@ export default class GameBaseObject
     if (typeof maxSpeed == "number") this.maxSpeed = maxSpeed;
 
     this.serverPosition = vec2.clone(this.position);
-    this.serverVelocity = vec2.clone(this.velocity);
-    this.serverRotation = this.rotation;
+
+    this.addSerializableVec2Property("position", {
+      optional: false,
+      deserialize: (source: SerializedVec2, initialize?: boolean) => {
+        if (initialize) deserializeVec2(this.position, source);
+        this.initializeFromServer = !!initialize;
+        deserializeVec2(this.serverPosition, source);
+      }
+    });
+    this.addSerializableVec2Property("velocity", { optional: false });
+    this.addSerializableVec2Property("totalForce");
+    this.addSerializableProperty("rotation");
+    this.addSerializableProperty("radius");
+    this.addSerializableProperty("mass");
+    this.addSerializableProperty("minSpeed");
+    this.addSerializableProperty("maxSpeed");
+  }
+
+  gameObjectAdded(): void {
+    this.setPreviousState();
   }
 
   update(time: RefreshTime) {
     const serverTimeAdvance = (time.curTime - this.serverTargetLastUpdateTime) / 1000;
     const performLerp = this.serverTargetLastUpdateTime > 0 && this.serverLerpProgress < 1;
     if (performLerp) {
-      this.serverLerpProgress = Math.min(1, this.serverLerpProgress + time.timeAdvance * 5);
+      if (this.initializeFromServer) {
+        this.serverLerpProgress = 1;
+        this.initializeFromServer = false;
+      } else {
+        this.serverLerpProgress = Math.min(1, this.serverLerpProgress + time.timeAdvance * 5);
+      }
     }
 
     // Apply our total force to our velocities.
@@ -140,27 +171,68 @@ export default class GameBaseObject
       sqrSpeed = 0;
     }
     // Or above
-    else if (typeof this.maxSpeed !== "undefined" && sqrSpeed > this.maxSpeed * this.maxSpeed) {
+    else if (sqrSpeed > this.maxSpeed * this.maxSpeed) {
       // Cap our speed.
       vec2.scale(velocity, vec2.normalize(velocity, velocity), this.maxSpeed);
     }
     return sqrSpeed;
   }
 
-  serialize(): SerializedGameBaseObject | null {
+  get hasChanged(): boolean {
+    return hasPreviousStateChanged(this.serializable, this._previousState, this);
+  }
+
+  setPreviousState() {
+    setPreviousState(this.serializable, this._previousState, this);
+  }
+
+  protected addSerializableVec2Property(
+    name: string,
+    options?: {
+      serializedName?: string;
+      optional?: boolean;
+      init?: () => vec2;
+      copy?: (to: vec2, from: vec2) => vec2;
+      serialize?: (value: vec2, changesOnly: boolean) => SerializedVec2;
+      deserialize?: (sValue: SerializedVec2, initialize?: boolean) => void;
+      equals?: (a: vec2, b: vec2) => boolean;
+    }
+  ) {
+    this.addSerializableProperty(name, {
+      optional: options?.optional,
+      init: options?.init || vec2.create,
+      copy: options?.copy || vec2.copy,
+      serialize: options?.serialize || serializeVec2,
+      deserialize:
+        options?.deserialize ||
+        ((source: SerializedVec2) => deserializeVec2((this as any)[name], source)),
+      equals: options?.equals || vec2.equals
+    });
+  }
+
+  protected addSerializableProperty(
+    name: string,
+    options?: {
+      serializedName?: string;
+      optional?: boolean;
+      init?: () => any;
+      copy?: (to: any, from: any) => any;
+      serialize?: (value: any, changesOnly: boolean) => any;
+      deserialize?: (sValue: any, initialize?: boolean) => void;
+      equals?: (a: any, b: any) => boolean;
+    }
+  ) {
+    addSerializableProperty(this.serializable, name, options);
+  }
+
+  serialize(changesOnly = false): SerializedGameBaseObject | null {
     if (this.removed) return null;
+
     return {
       type: "GameBaseObject", // Should get overwritten
       id: this.id,
 
-      position: serializeVec2(this.position),
-      velocity: serializeVec2(this.velocity),
-      totalForce: serializeVec2(this.totalForce),
-      rotation: this.rotation,
-      radius: this.radius,
-      mass: this.mass,
-      minSpeed: this.minSpeed,
-      maxSpeed: this.maxSpeed
+      ...serializeSerializables(this.serializable, this._previousState, this, changesOnly)
     };
   }
 
@@ -169,17 +241,7 @@ export default class GameBaseObject
     // Because this class is inherited, 'type' may be different.
     // if (obj.type != "WorldBounds") throw "Type mismatch during deserialization!";
 
-    const pObj = obj as SerializedGameBaseObject;
-
-    if (initialize) deserializeVec2(this.position, pObj.position);
-    deserializeVec2(this.serverPosition, pObj.position);
-    deserializeVec2(this.velocity, pObj.velocity);
-    deserializeVec2(this.totalForce, pObj.totalForce);
-    this.rotation = pObj.rotation;
-    this.radius = pObj.radius;
-    this.mass = pObj.mass;
-    this.minSpeed = pObj.minSpeed;
-    this.maxSpeed = pObj.maxSpeed;
+    deserializeSerializables(this.serializable, obj, this, initialize);
 
     // Reset lerp progress
     this.serverLerpProgress = 0;

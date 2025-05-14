@@ -11,9 +11,9 @@ export type ExplosionTypes = "shipexplosion";
 export interface ExplosionConfiguration {}
 
 export interface SerializedExplosion extends SerializedGameBaseObject {
-  color: string;
-  explosionType: ExplosionTypes;
-  timespan: number;
+  _color: string;
+  _explosionType: ExplosionTypes;
+  _timespan: number;
 }
 
 export interface ExplosionProperties extends GameBaseObjectProperties {
@@ -40,9 +40,14 @@ export default class Explosion extends GameBaseObject {
     if (color) this._color = color;
     if (type) this._type = type;
     if (timespan) this._timespan = timespan;
+
+    this.addSerializableProperty("_color");
+    this.addSerializableProperty("_type", { serializedName: "_explosionType" });
+    this.addSerializableProperty("_timespan");
   }
 
   gameObjectAdded(): void {
+    super.gameObjectAdded();
     setTimeout(() => {
       if (this.game) this.game.removeGameObject(this);
     }, this._timespan);
@@ -52,29 +57,19 @@ export default class Explosion extends GameBaseObject {
     // super.update(time);
   }
 
-  serialize(): SerializedExplosion | null {
-    const sObj = super.serialize();
+  serialize(changesOnly = false): SerializedExplosion | null {
+    const sObj = super.serialize(changesOnly);
     if (!sObj) return null;
     return {
       ...sObj,
-      type: "Explosion",
-
-      color: this._color,
-      explosionType: this._type,
-      timespan: this._timespan
-    };
+      type: "Explosion"
+    } as SerializedExplosion;
   }
 
   deserialize(obj: NetworkObject, initialize = true) {
     if (this.id != obj.id) throw "Id mismatch during deserialization!";
     if (obj.type != "Explosion") throw "Type mismatch during deserialization!";
 
-    const pObj = obj as SerializedExplosion;
-
     super.deserialize(obj, initialize);
-
-    this._color = pObj.color;
-    this._type = pObj.explosionType;
-    this._timespan = pObj.timespan;
   }
 }

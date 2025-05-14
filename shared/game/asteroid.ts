@@ -29,6 +29,8 @@ export default class Asteroid extends CollidableGameBaseObject {
     this.classTags.push("asteroid");
 
     if (color) this._color = color;
+
+    this.addSerializableProperty("_color", { serializedName: "color" });
   }
 
   onCollision(thisObj: ColliderResult, otherObj: ColliderResult) {
@@ -41,25 +43,19 @@ export default class Asteroid extends CollidableGameBaseObject {
     super.onCollision(thisObj, otherObj);
   }
 
-  serialize(): SerializedAsteroid | null {
-    const sObj = super.serialize();
+  serialize(changesOnly = false): SerializedAsteroid | null {
+    const sObj = super.serialize(changesOnly);
     if (!sObj) return null;
     return {
       ...sObj,
-      type: "Asteroid",
-
-      color: this._color
-    };
+      type: "Asteroid"
+    } as SerializedAsteroid;
   }
 
   deserialize(obj: NetworkObject, initialize = true) {
     if (this.id != obj.id) throw "Id mismatch during deserialization!";
     if (obj.type != "Asteroid") throw "Type mismatch during deserialization!";
 
-    const pObj = obj as SerializedAsteroid;
-
     super.deserialize(obj, initialize);
-
-    this._color = pObj.color;
   }
 }

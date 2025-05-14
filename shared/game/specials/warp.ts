@@ -1,16 +1,16 @@
 import { quat, vec2, vec3 } from "gl-matrix";
-import Special, { SerializableSpecial } from "./special";
+import Special, { SerializedSpecial } from "./special";
 import Ship, { OnOffEventContext } from "../ship";
 import { Math2D, RefreshTime } from "star-engine";
 import WorldBounds from "../worldBounds";
 import { SerializedVec2, serializeVec2, deserializeVec2 } from "../network";
 
-export interface SerializableWarp extends SerializableSpecial {
-  on: boolean;
-  ready: boolean;
-  jumping: boolean;
-  from?: SerializedVec2;
-  to?: SerializedVec2;
+export interface SerializableWarp extends SerializedSpecial {
+  _on: boolean;
+  _ready: boolean;
+  _jumping: boolean;
+  _from: SerializedVec2;
+  _to: SerializedVec2;
 }
 
 export default class Warp extends Special {
@@ -20,8 +20,8 @@ export default class Warp extends Special {
   _ellapsed: number = 0;
   _jumping: boolean = false;
 
-  _from?: vec2;
-  _to?: vec2;
+  _from: vec2 = vec2.create();
+  _to: vec2 = vec2.create();
 
   constructor(owner: Ship, power: number) {
     super(owner, power);
@@ -39,6 +39,39 @@ export default class Warp extends Special {
     });
     this.owner.on("rotateClockwise", (ship: Ship, context: OnOffEventContext) => {
       context.cancel = context.on && (this._on || !!this._ellapsed);
+    });
+
+    this.addSerializableProperty("_on", {
+      deserialize: (sValue: boolean) => {
+        if (sValue && !this._on && this.jumping) {
+          this.jumping();
+        }
+        this._on = sValue;
+      }
+    });
+    this.addSerializableProperty("_ready", {
+      serialize: (value: boolean) => value && !this._jumping
+    });
+    this.addSerializableProperty("_from", {
+      init: vec2.create,
+      copy: vec2.copy,
+      serialize: serializeVec2,
+      deserialize: (source: SerializedVec2) => deserializeVec2((this as any)["_from"], source),
+      equals: vec2.equals
+    });
+    this.addSerializableProperty("_to", {
+      init: vec2.create,
+      copy: vec2.copy,
+      serialize: serializeVec2,
+      deserialize: (source: SerializedVec2) => deserializeVec2((this as any)["_to"], source),
+      equals: vec2.equals
+    });
+    this.addSerializableProperty("_jumping", {
+      deserialize: (sValue: boolean) => {
+        if (sValue && !this._jumping && this._to && this._from && this.jump) {
+          this.jump();
+        }
+      }
     });
   }
 
@@ -94,7 +127,7 @@ export default class Warp extends Special {
       vec3.transformQuat(temp, temp, rotQuat);
 
       // Displace their position.
-      this._from = vec2.copy(vec2.create(), this.owner.position);
+      vec2.copy(this._from, this.owner.position);
       vec2.add(this.owner.position, this.owner.position, vec2.fromValues(temp[0], temp[1]));
 
       // Test this position. If it is outside the world bounds, then we're randomizing
@@ -114,52 +147,14 @@ export default class Warp extends Special {
           );
         }
       }
-      this._to = vec2.copy(vec2.create(), this.owner.position);
+      vec2.copy(this._to, this.owner.position);
 
       this._ellapsed = 0;
       this._jumping = true;
       setTimeout(() => {
         this._jumping = false;
       }, 1000);
-    }
-  }
-
-  serialize(): SerializableWarp {
-    const obj = super.serialize();
-    return {
-      ...obj,
-      on: this._on,
-      ready: this._ready && !this.jumping,
-      jumping: this._jumping,
-      from: this._from ? serializeVec2(this._from) : undefined,
-      to: this._to ? serializeVec2(this._to) : undefined
-    };
-  }
-
-  deserialize(obj: SerializableWarp) {
-    super.deserialize(obj);
-
-    if (obj.on && !this._on && this.jumping) {
-      this.jumping();
-    }
-    this._on = obj.on;
-    this._ready = obj.ready;
-    if (obj.from) {
-      const newFrom = this._from || vec2.create();
-      deserializeVec2(newFrom, obj.from);
-      this._from = newFrom;
-    } else {
-      delete this._from;
-    }
-    if (obj.to) {
-      const newTo = this._to || vec2.create();
-      deserializeVec2(newTo, obj.to);
-      this._to = newTo;
-    } else {
-      delete this._to;
-    }
-    if (obj.jumping && !this._jumping && this._to && this._from && this.jump) {
-      this.jump();
+      if (this.owner.requestUpdate) this.owner.requestUpdate();
     }
   }
 }

@@ -57,10 +57,10 @@ export default class Explosion extends ExplosionBase {
   }
 
   static from(resources: Resources, sObj: SerializedExplosion): Explosion {
-    const explosionImage = resources.get(sObj.explosionType)?.image;
+    const explosionImage = resources.get(sObj._explosionType)?.image;
     const explosionImageFn = {
       shipexplosion: Explosion.shipExplosion
-    }[sObj.explosionType];
+    }[sObj._explosionType];
     const image = !explosionImage ? null : explosionImageFn(explosionImage);
     const obj = new Explosion(image ? { image } : {});
     obj._id = sObj.id;

@@ -30,17 +30,8 @@ export default class NetworkUpdate extends GameObject {
   gameObjectAdded() {
     const socket = (this.game as Game).socket;
     socket.on("networkUpdate", (data: NetworkUpdateData) => {
-      // If this full update is newer than the last one, use this only.
-      if (
-        data.fullUpdate &&
-        (this._lastUpdates.length == 0 ||
-          this._lastUpdates[this._lastUpdates.length - 1].timestamp < data.timestamp)
-      ) {
-        this._lastUpdates = [data];
-      } else {
-        // Otherwise, append.
-        this._lastUpdates.push(data);
-      }
+      // Append update.
+      this._lastUpdates.push(data);
     });
 
     const ping = () => {
@@ -60,6 +51,8 @@ export default class NetworkUpdate extends GameObject {
   update(_time: RefreshTime) {
     const game = this.game as Game;
 
+    const newlyAdded: Record<number, NetworkDeserializable> = {};
+
     // Evaluate our last payload, adding in new, updating existing, and removing
     // missing networked game object.
     this._lastUpdates.forEach((lastUpdate) => {
@@ -75,16 +68,19 @@ export default class NetworkUpdate extends GameObject {
 
       lastUpdate.objects.forEach((newObj) => {
         let localObj = game.getGameObject(newObj.id) as NetworkDeserializable;
-        if (newObj.type == "delete") {
+        if (!localObj) localObj = newlyAdded[newObj.id];
+        if (newObj.__delete) {
           if (localObj) toDelete.push(localObj);
         } else {
           if (!localObj) {
             if (newObj.type == "Player") {
               const player = (localObj = Player.from(newObj as SerializedPlayer));
+              newlyAdded[player.id] = player;
               game.addGameObject(player, game.players);
             } else if (newObj.type == "WorldBounds") {
               const worldBounds = (localObj = WorldBounds.from(newObj as SerializedWorldBounds));
               game.worldBounds = worldBounds;
+              newlyAdded[worldBounds.id] = worldBounds;
               game.addGameObject(worldBounds, game.collidables);
               // Update collision detection as well.
               vec2.copy(game.collisionDetection.maxBounds[0], worldBounds.position);
@@ -92,11 +88,14 @@ export default class NetworkUpdate extends GameObject {
             } else if (newObj.type == "Ship") {
               // Find the owner of the ship.
               const sNewObj = newObj as SerializedShip;
-              const owner = game.getGameObject(sNewObj.owner) as Player;
+              let owner = game.getGameObject(sNewObj.owner) as Player;
+              // Check in our list of newly added objs.
+              if (!owner) owner = newlyAdded[sNewObj.owner] as Player;
               // no owner? No ship.
               if (!owner) return;
 
               const ship = (localObj = Ship.from(owner, game.resources, sNewObj));
+              newlyAdded[ship.id] = ship;
               game.addGameObject(ship, game.ships);
               // If this is our ship, hook things up
               if (owner.id == game.player) {
@@ -105,46 +104,48 @@ export default class NetworkUpdate extends GameObject {
             } else if (newObj.type == "Bullet") {
               // Find the owner of the bullet.
               const sNewObj = newObj as SerializedBullet;
-              const owner = game.getGameObject(sNewObj.owner) as Ship;
+              let owner = game.getGameObject(sNewObj.owner) as Ship;
+              // Check in our list of newly added objs.
+              if (!owner) owner = newlyAdded[sNewObj.owner] as Ship;
               // no owner? No bullet.
               if (!owner) return;
 
               const bullet = (localObj = Bullet.from(owner, sNewObj));
+              newlyAdded[bullet.id] = bullet;
               game.addGameObject(bullet, game.collidables);
             } else if (newObj.type == "Asteroid") {
               const asteroid = (localObj = Asteroid.from(newObj as SerializedAsteroid));
+              newlyAdded[asteroid.id] = asteroid;
               game.addGameObject(asteroid, game.collidables);
             } else if (newObj.type == "Explosion") {
               const explosion = (localObj = Explosion.from(
                 game.resources,
                 newObj as SerializedExplosion
               ));
+              newlyAdded[explosion.id] = explosion;
               game.addGameObject(explosion, game.collidables);
             } else if (newObj.type == "Starfield") {
               const starfield = (localObj = Starfield.from(newObj as SerializedStarfield));
+              newlyAdded[starfield.id] = starfield;
               game.addGameObject(starfield, game.background);
             } else if (newObj.type == "Planet") {
               const planet = (localObj = Planet.from(game.resources, newObj as SerializedPlanet));
+              newlyAdded[planet.id] = planet;
               game.addGameObject(planet, game.background);
             } else {
               // Ignore any we don't recognize
               console.warn("Unrecognized serialized type in network update:", newObj.type);
             }
-          } else if (localObj.deserialize) localObj.deserialize(newObj, false);
-          else
+          } else if (localObj.deserialize) {
+            localObj.deserialize(newObj, !!newObj.__noLerp);
+          } else
             throw `Object ${newObj.id} (${newObj.type}) does not implement networkdeserializable`;
           localObj.serverTargetLastUpdateTime = lastUpdateTime;
         }
       });
 
-      if (lastUpdate.fullUpdate) {
-        // Find any to remove
-        const existing: Set<number> = new Set(lastUpdate.objects.map((obj) => obj.id));
-        toDelete = [...toDelete, ...game.filter("network").filter((obj) => !existing.has(obj.id))];
-      }
-
       toDelete
-        .filter((obj) => !obj.tags.includes("explosion")) // Let the client handle removal of explosions
+        .filter((obj) => !(obj.tags || obj.classTags || []).includes("explosion")) // Let the client handle removal of explosions
         .forEach((obj) => {
           game.removeGameObject(obj);
 

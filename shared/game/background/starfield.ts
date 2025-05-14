@@ -34,31 +34,24 @@ export default class Starfield extends ProceduralObject {
 
     if (typeof density == "number") this.density = density;
     if (type) this.type = type;
+
+    this.addSerializableProperty("density");
+    this.addSerializableVec2Property("size");
+    this.addSerializableProperty("type", { serializedName: "starfieldType" });
   }
 
-  serialize(): SerializedStarfield | null {
-    const sObj = super.serialize();
+  serialize(changesOnly = false): SerializedStarfield | null {
+    const sObj = super.serialize(changesOnly);
     if (!sObj) return null;
     return {
       ...sObj,
-      type: "Starfield",
-      id: this.id,
-
-      size: serializeVec2(this.size),
-      density: this.density,
-      starfieldType: this.type
-    };
+      type: "Starfield"
+    } as SerializedStarfield;
   }
 
   deserialize(obj: NetworkObject, initialize = true) {
     if (this.id != obj.id) throw "Id mismatch during deserialization!";
 
     super.deserialize(obj, initialize);
-
-    const pObj = obj as SerializedStarfield;
-
-    deserializeVec2(this.size, pObj.size);
-    this.density = pObj.density;
-    this.type = pObj.starfieldType;
   }
 }

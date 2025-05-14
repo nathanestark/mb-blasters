@@ -4,6 +4,7 @@ import {
   Container,
   CONTROLLER_ACTION,
   FPSHud,
+  GameObject,
   InputController,
   Resources,
   TextHud
@@ -41,6 +42,7 @@ export default class Game extends GameBase {
 
   collisionDetection: CollisionDetection;
   worldBounds?: WorldBounds;
+  networkUpdate: NetworkUpdate;
 
   shipConfiguration: ShipConfiguration = {
     type: "bustership",
@@ -65,7 +67,8 @@ export default class Game extends GameBase {
     this.resources = new Resources();
 
     // Process network updates first.
-    this.addGameObject(new NetworkUpdate());
+    this.networkUpdate = new NetworkUpdate();
+    this.addGameObject(this.networkUpdate);
 
     this.players = new Container();
     this.addGameObject(this.players);
@@ -125,26 +128,40 @@ export default class Game extends GameBase {
   }
 
   connect() {
-    console.log("Game.connect");
-    this.socket.emit("initializePlayer", (sPlayer: SerializedPlayer) => {
-      console.log("initializePlayer");
+    const doConnect = () => {
+      console.log("Game.connect");
+      this.socket.emit("initializePlayer", (sPlayer: SerializedPlayer) => {
+        console.log("initializePlayer");
 
-      // Handle disconnects?
-      this.socket.on("disconnect", () => console.log("Disconnected by server!"));
+        // Handle disconnects?
+        this.socket.on("disconnect", () => console.log("Disconnected by server!"));
 
-      this.socket.on("error", (e) => console.warn("Message error:", e));
+        this.socket.on("error", (e) => console.warn("Message error:", e));
 
-      let localObj = this.getGameObject(sPlayer.id) as Player;
-      if (!localObj) {
-        localObj = Player.from(sPlayer);
-        this.addGameObject(localObj, this.players);
-        this.player = localObj.id;
-      } else if (localObj.deserialize) {
-        localObj.deserialize(sPlayer);
-        this.player = localObj.id;
-      } else
-        throw `Object ${sPlayer.id} (${sPlayer.type}) does not implement networkdeserializable`;
-    });
+        let localObj = this.getGameObject(sPlayer.id) as Player;
+        if (!localObj) {
+          localObj = Player.from(sPlayer);
+          this.addGameObject(localObj, this.players);
+          this.player = localObj.id;
+        } else if (localObj.deserialize) {
+          localObj.deserialize(sPlayer);
+          this.player = localObj.id;
+        } else
+          throw `Object ${sPlayer.id} (${sPlayer.type}) does not implement networkdeserializable`;
+      });
+    };
+
+    // Need to make sure our networkUpdate has finished adding in.
+    if (this.networkUpdate.active) doConnect();
+    else {
+      const waitForNetworkUpdate = (obj: GameObject) => {
+        if (obj.id == this.networkUpdate.id) {
+          this.off("gameObjectAdded", waitForNetworkUpdate);
+          doConnect();
+        }
+      };
+      this.on("gameObjectAdded", waitForNetworkUpdate);
+    }
   }
 
   addCamera(canvas: HTMLCanvasElement) {

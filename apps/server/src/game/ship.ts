@@ -6,6 +6,7 @@ import ShipBase, {
 import Player from "./player";
 import Bullet from "@shared/game/bullet";
 import Explosion from "@shared/game/explosion";
+import Game from ".";
 
 interface ShipProperties extends ShipBaseProperties {}
 
@@ -84,5 +85,12 @@ export default class Ship extends ShipBase {
         }
       }, 500);
     }
+  }
+
+  requestUpdate(options?: { noLerping: boolean }) {
+    (this.game as Game)._networkUpdate.requestUpdate(
+      this,
+      options?.noLerping ? "noLerp" : "default"
+    );
   }
 }

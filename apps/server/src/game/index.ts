@@ -68,18 +68,19 @@ export default class Game extends GameBase {
 
     this.addBackground();
 
+    // this.addAsteroid(50, 50);
     this.addSmallAsteroids();
     this.addMediumAsteroids();
     this.addLargeAsteroids();
 
     this.on("gameObjectAdded", (obj) => {
       if (obj.tags?.includes("network")) {
-        this._networkUpdate.requestUpdate(obj as NetworkSerializable);
+        this._networkUpdate.requestUpdate(obj as NetworkSerializable, "full");
       }
     });
     this.on("gameObjectRemoved", (obj) => {
       if (obj.tags?.includes("network")) {
-        this._networkUpdate.requestDelete(obj as NetworkSerializable);
+        this._networkUpdate.requestUpdate(obj as NetworkSerializable, "delete");
       }
     });
   }
@@ -209,11 +210,7 @@ export default class Game extends GameBase {
   }
 
   async addPlayer(player: Player): Promise<Player> {
-    const newPlayer = (await this.addGameObject(player, this._players)) as Player;
-
-    this._networkUpdate.requestUpdate(newPlayer);
-
-    return newPlayer;
+    return (await this.addGameObject(player, this._players)) as Player;
   }
 
   async spawnShip(player: Player, config: ShipConfiguration) {

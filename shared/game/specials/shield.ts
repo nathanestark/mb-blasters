@@ -1,13 +1,13 @@
 import { vec2 } from "gl-matrix";
-import Special, { SerializableSpecial } from "./special";
+import Special, { SerializedSpecial } from "./special";
 import Ship, { CollisionEventContext, OnOffEventContext } from "../ship";
 import { BoundingBoxColliderResult, CircleColliderResult, RefreshTime } from "star-engine";
 import CollidableGameBaseObject from "../collidableGameBaseObject";
 import Bullet from "../bullet";
 
-export interface SerializableShield extends SerializableSpecial {
-  on: boolean;
-  status: number;
+export interface SerializableShield extends SerializedSpecial {
+  _on: boolean;
+  _status: number;
 }
 
 export default class Shield extends Special {
@@ -45,6 +45,17 @@ export default class Shield extends Special {
         this._status = Math.max(0, this._status - Math.abs(e) / this.power);
       }
     });
+
+    this.addSerializableProperty("_on", {
+      deserialize: (sValue: boolean) => {
+        if (sValue != this._on) {
+          if (sValue) this.on();
+          else this.off();
+        }
+        this._on = sValue;
+      }
+    });
+    this.addSerializableProperty("_status");
   }
 
   on() {
@@ -74,21 +85,5 @@ export default class Shield extends Special {
         this._status + (time.timeAdvance * 950) / (226 - this.power * 2)
       );
     }
-  }
-
-  serialize(): SerializableShield {
-    const obj = super.serialize();
-    return {
-      ...obj,
-      on: this._on,
-      status: this._status
-    };
-  }
-
-  deserialize(obj: SerializableShield) {
-    super.deserialize(obj);
-
-    this._on = obj.on;
-    this._status = obj.status;
   }
 }

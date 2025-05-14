@@ -6,7 +6,13 @@ import {
   NetworkObject,
   SerializedVec2,
   serializeVec2,
-  deserializeVec2
+  deserializeVec2,
+  SerializableProperty,
+  addSerializableProperty,
+  hasPreviousStateChanged,
+  setPreviousState,
+  serializeSerializables,
+  deserializeSerializables
 } from "./network";
 
 export interface SerializedWorldBounds extends NetworkObject {
@@ -36,6 +42,9 @@ export default class WorldBounds
   serverTargetLastUpdateTime: number = 0;
   _collider: BoundingBoxCollider;
 
+  serializable: Array<SerializableProperty> = [];
+  _previousState: Record<string, any> = {};
+
   constructor({ position, size, color }: WorldBoundsProperties = {}) {
     super();
     this.classTags = ["world", "network"];
@@ -57,6 +66,82 @@ export default class WorldBounds
     // Add a collider as a child.
     this._collider = new BoundingBoxCollider(this);
     this.children = [this._collider];
+
+    this.addSerializableVec2Property("position");
+    this.addSerializableVec2Property("velocity");
+    this.addSerializableVec2Property("totalForce");
+    this.addSerializableVec2Property("size");
+    this.addSerializableProperty("bounds", {
+      init: () => [vec2.create(), vec2.create()],
+      copy: (to: [vec2, vec2], from: [vec2, vec2]) => {
+        vec2.copy(to[0], from[0]);
+        vec2.copy(to[1], from[1]);
+      },
+      serialize: (value: [vec2, vec2]) => {
+        return [serializeVec2(value[0]), serializeVec2(value[1])];
+      },
+      deserialize: (source: [SerializedVec2, SerializedVec2]) => {
+        deserializeVec2(this.bounds[0], source[0]);
+        deserializeVec2(this.bounds[1], source[1]);
+      },
+      equals: (a: [vec2, vec2], b: [vec2, vec2]) => {
+        return vec2.equals(a[0], b[0]) && vec2.equals(a[1], b[1]);
+      }
+    });
+    this.addSerializableProperty("color");
+
+    this.setPreviousState();
+  }
+
+  gameObjectAdded(): void {
+    this.setPreviousState();
+  }
+
+  protected addSerializableVec2Property(
+    name: string,
+    options?: {
+      serializedName?: string;
+      optional?: boolean;
+      init?: () => vec2;
+      copy?: (to: vec2, from: vec2) => vec2;
+      serialize?: (value: vec2) => SerializedVec2;
+      deserialize?: (sValue: SerializedVec2, initialize?: boolean) => void;
+      equals?: (a: vec2, b: vec2) => boolean;
+    }
+  ) {
+    this.addSerializableProperty(name, {
+      optional: options?.optional,
+      init: options?.init || vec2.create,
+      copy: options?.copy || vec2.copy,
+      serialize: options?.serialize || serializeVec2,
+      deserialize:
+        options?.deserialize ||
+        ((source: SerializedVec2) => deserializeVec2((this as any)[name], source)),
+      equals: vec2.equals
+    });
+  }
+
+  protected addSerializableProperty(
+    name: string,
+    options?: {
+      serializedName?: string;
+      optional?: boolean;
+      init?: () => any;
+      copy?: (to: any, from: any) => any;
+      serialize?: (value: any, changesOnly: boolean) => any;
+      deserialize?: (sValue: any, initialize?: boolean) => void;
+      equals?: (a: any, b: any) => boolean;
+    }
+  ) {
+    addSerializableProperty(this.serializable, name, options);
+  }
+
+  get hasChanged() {
+    return hasPreviousStateChanged(this.serializable, this._previousState, this);
+  }
+
+  setPreviousState() {
+    setPreviousState(this.serializable, this._previousState, this);
   }
 
   update() {
@@ -65,29 +150,18 @@ export default class WorldBounds
     vec2.add(this.bounds[1], this.position, this.size);
   }
 
-  serialize(): SerializedWorldBounds {
+  serialize(changesOnly = false): SerializedWorldBounds {
     return {
       type: "WorldBounds",
       id: this.id,
-      position: serializeVec2(this.position),
-      velocity: serializeVec2(this.velocity),
-      totalForce: serializeVec2(this.totalForce),
-      size: serializeVec2(this.size),
-      bounds: [serializeVec2(this.bounds[0]), serializeVec2(this.bounds[1])]
-    };
+      ...serializeSerializables(this.serializable, this._previousState, this, changesOnly)
+    } as SerializedWorldBounds;
   }
 
   deserialize(obj: NetworkObject, initialize = true) {
     if (this.id != obj.id) throw "Id mismatch during deserialization!";
     if (obj.type != "WorldBounds") throw "Type mismatch during deserialization!";
 
-    const pObj = obj as SerializedWorldBounds;
-
-    deserializeVec2(this.position, pObj.position);
-    deserializeVec2(this.velocity, pObj.velocity);
-    deserializeVec2(this.totalForce, pObj.totalForce);
-    deserializeVec2(this.size, pObj.size);
-    deserializeVec2(this.bounds[0], pObj.bounds[0]);
-    deserializeVec2(this.bounds[1], pObj.bounds[1]);
+    deserializeSerializables(this.serializable, obj, this, initialize);
   }
 }

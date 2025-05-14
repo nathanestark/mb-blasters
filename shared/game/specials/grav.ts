@@ -1,12 +1,12 @@
 import { vec2 } from "gl-matrix";
-import Special, { SerializableSpecial } from "./special";
+import Special, { SerializedSpecial } from "./special";
 import Ship from "../ship";
 import GameBaseObject from "../gameBaseObject";
 import { RefreshTime } from "star-engine";
 
-export interface SerializableGrav extends SerializableSpecial {
-  on: boolean;
-  direction: number;
+export interface SerializableGrav extends SerializedSpecial {
+  _on: boolean;
+  _direction: number;
 }
 
 export default class Grav extends Special {
@@ -18,12 +18,26 @@ export default class Grav extends Special {
     super(owner, power);
     this.type = "grav";
     this._direction = typeof direction === "undefined" ? 1 : direction;
+
+    this.addSerializableProperty("_on", {
+      deserialize: (sValue: boolean) => {
+        if (sValue != this._on) {
+          if (sValue) this.on();
+          else this.off();
+        }
+        this._on = sValue;
+      }
+    });
+    this.addSerializableProperty("_direction");
   }
 
   on() {
-    this._on = true;
-    this._realMass = this.owner.mass;
-    this.owner.mass = this.power;
+    if (!this._on) {
+      this._on = true;
+      this._realMass = this.owner.mass;
+      this.owner.mass = this.power;
+      if (this.activate) this.activate();
+    }
   }
 
   off() {
@@ -52,25 +66,5 @@ export default class Grav extends Special {
         vec2.scaleAndAdd(obj.totalForce, obj.totalForce, force, mag);
       });
     }
-  }
-
-  serialize(): SerializableGrav {
-    const obj = super.serialize();
-    return {
-      ...obj,
-      on: this._on,
-      direction: this._direction
-    };
-  }
-
-  deserialize(obj: SerializableGrav) {
-    super.deserialize(obj);
-
-    this._direction = obj.direction;
-
-    if (obj.on && !this._on && this.activate) {
-      this.activate();
-    }
-    this._on = obj.on;
   }
 }
