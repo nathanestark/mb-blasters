@@ -1,17 +1,19 @@
 import { Socket } from "socket.io";
 import Game from "@server/game/index";
 import Player from "@server/game/player";
-import { SerializedPlayer } from "@shared/game/player";
 import { ShipConfiguration } from "@shared/game/ship";
 import PlayerUpdate from "@shared/game/playerUpdate";
 
 export const handleConnection = (game: Game) => (socket: Socket) => {
   console.log("Player Connecting...");
   (async function processConnection() {
-    const player = await game.addPlayer(new Player(socket));
+    let player: Player = new Player(socket);
     // Deal with the initialize player call
     await new Promise<void>((resolve) => {
-      socket.once("initializePlayer", (callback: (player: SerializedPlayer) => void) => {
+      socket.once("initializePlayer", async (callback: (player: any) => void) => {
+        player = await game.addPlayer(player);
+        player.ping();
+
         // Reply back with a player created message
         callback(player.serialize());
         resolve();
@@ -25,10 +27,19 @@ export const handleConnection = (game: Game) => (socket: Socket) => {
       callback(`'${msg}' received`);
     });
 
+    // Deal with ping
+    socket.on("drPing", (callback: () => void) => {
+      callback();
+
+      player.ping();
+    });
+
     // Start listening for messages from the client.
     socket.onAny((eventName: string, ...args: Array<any>) => {
-      // Ignore initializePlayer, and echo
-      if (["initializePlayer", "echo"].includes(eventName)) return;
+      // Ignore initializePlayer, echo, and ping
+      if (["initializePlayer", "echo", "drPing"].includes(eventName)) return;
+
+      player.keepAlive();
 
       const handler = MESSAGE_HANDLERS[eventName];
       if (!handler) socket.emit("error", `Event '${eventName}' doesn't exist.`);
@@ -52,10 +63,6 @@ export const handleConnection = (game: Game) => (socket: Socket) => {
   })();
 };
 
-export const drPing = (game: Game, player: Player, callback: () => void) => {
-  callback();
-};
-
 export const updatePlayer = (game: Game, player: Player, obj: PlayerUpdate) => {
   // Don't let players update other players.
   if (player.id != obj.id) throw { code: "unauthorized" };
@@ -64,6 +71,7 @@ export const updatePlayer = (game: Game, player: Player, obj: PlayerUpdate) => {
 
   console.log("Updating player name to", obj.name);
   player.name = obj.name || "";
+  game._networkUpdate.requestUpdate(player);
 };
 
 export const spawnShip = (game: Game, player: Player, ship: ShipConfiguration) => {
@@ -92,7 +100,6 @@ export const special = (game: Game, player: Player, on: boolean) => {
 };
 
 const MESSAGE_HANDLERS: Record<string, (game: Game, ...args: Array<any>) => void> = {
-  drPing,
   updatePlayer,
   spawnShip,
   rotateCounterClockwise,

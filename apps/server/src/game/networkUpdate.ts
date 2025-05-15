@@ -17,7 +17,7 @@ export interface NetworkUpdateProperties {
 
 export default class NetworkUpdate extends GameObject {
   _nextUpdateTime: number;
-  _minUpdateTime: number = 2000;
+  _minUpdateTime: number = 200;
 
   _updates: Array<ObjUpdate> = [];
 

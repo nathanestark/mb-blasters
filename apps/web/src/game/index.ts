@@ -1,15 +1,21 @@
+import { EventEmitter } from "events";
 import { Socket } from "socket.io-client";
 import {
   CollisionDetection,
   Container,
   CONTROLLER_ACTION,
   FPSHud,
+  GameEventEmitter,
   GameObject,
   InputController,
   Resources,
   TextHud
 } from "star-engine";
-import GameBase, { GameProperties as GameBaseProperties } from "@shared/game/index";
+import {
+  Game as GameBase,
+  GameProperties as GameBaseProperties,
+  GameEventTypes as GameEventBaseTypes
+} from "star-engine";
 import NetworkUpdate from "./networkUpdate";
 import Player, { SerializedPlayer } from "./player";
 import DefaultCamera from "./defaultCamera";
@@ -23,9 +29,18 @@ import PingHud from "./hud/pingHud";
 import WorldBounds from "./worldBounds";
 import Dust from "./background/dust";
 
+interface GameEventTypes extends GameEventBaseTypes {
+  connected: [];
+  disconnected: [];
+  error: [];
+  playerConnected: [player: Player];
+  playerDisconnected: [player: Player];
+  playerChanged: [player: Player];
+}
+
 interface GameProperties extends GameBaseProperties {}
 
-export default class Game extends GameBase {
+export default class Game extends GameBase implements GameEventEmitter<GameEventTypes> {
   player?: number;
   ship: number | null = null;
   primaryCamera?: DefaultCamera;
@@ -132,11 +147,18 @@ export default class Game extends GameBase {
       console.log("Game.connect");
       this.socket.emit("initializePlayer", (sPlayer: SerializedPlayer) => {
         console.log("initializePlayer");
+        this.emit("connected");
 
         // Handle disconnects?
-        this.socket.on("disconnect", () => console.log("Disconnected by server!"));
+        this.socket.on("disconnect", () => {
+          console.log("Disconnected by server!");
+          this.emit("disconnected");
+        });
 
-        this.socket.on("error", (e) => console.warn("Message error:", e));
+        this.socket.on("error", (e) => {
+          console.warn("Message error:", e);
+          this.emit("error");
+        });
 
         let localObj = this.getGameObject(sPlayer.id) as Player;
         if (!localObj) {
@@ -148,6 +170,8 @@ export default class Game extends GameBase {
           this.player = localObj.id;
         } else
           throw `Object ${sPlayer.id} (${sPlayer.type}) does not implement networkdeserializable`;
+
+        this.networkUpdate.receiveMessages = true;
       });
     };
 
@@ -162,6 +186,17 @@ export default class Game extends GameBase {
       };
       this.on("gameObjectAdded", waitForNetworkUpdate);
     }
+
+    this.on("gameObjectAdded", (obj: GameObject) => {
+      if (obj instanceof Player) {
+        this.emit("playerConnected", obj);
+      }
+    });
+    this.on("gameObjectRemoved", (obj: GameObject) => {
+      if (obj instanceof Player) {
+        this.emit("playerDisconnected", obj);
+      }
+    });
   }
 
   addCamera(canvas: HTMLCanvasElement) {

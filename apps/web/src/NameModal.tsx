@@ -25,7 +25,6 @@ const NameModal: FC<Props> = ({ onClose }) => {
     }
   }, [name, onClose]);
 
-  console.log(name);
   return (
     <ConfirmationModal
       className={styles.nameModal}

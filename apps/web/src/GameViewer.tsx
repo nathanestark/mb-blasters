@@ -1,9 +1,6 @@
 import React, { FC, useState, useRef, useCallback, useEffect, MouseEventHandler } from "react";
 
 import useGame from "./useGame";
-import Player from "@web/game/player";
-
-import styles from "./App.module.scss";
 
 const GameViewer: FC = () => {
   const { getGame } = useGame();
@@ -29,6 +26,9 @@ const GameViewer: FC = () => {
     game.addCamera(canvasRef.current);
     game.registerInput(canvasRef.current);
     setInputRegistered(true);
+    return () => {
+      if (!getGame()) setInputRegistered(false);
+    };
   }, [getGame, isCanvasValid, inputRegistered]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {

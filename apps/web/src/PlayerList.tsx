@@ -1,4 +1,4 @@
-import React, { FC, useMemo } from "react";
+import React, { FC, useEffect, useMemo, useState } from "react";
 
 import useGame from "./useGame";
 import Player from "@web/game/player";
@@ -9,10 +9,19 @@ import styles from "./App.module.scss";
 
 const PlayerList: FC = () => {
   const { getGame } = useGame();
+  const [players, setPlayers] = useState<Array<Player>>([]);
 
-  const players: Array<Player> = useMemo(() => {
+  useEffect(() => {
     const game = getGame();
-    return (game?.players?.children || []) as Array<Player>;
+    game?.on("playerConnected", () => {
+      setPlayers((game?.players?.children || []) as Array<Player>);
+    });
+    game?.on("playerDisconnected", () => {
+      setPlayers((game?.players?.children || []) as Array<Player>);
+    });
+    game?.on("playerChanged", (player: Player) => {
+      setPlayers((game?.players?.children || []) as Array<Player>);
+    });
   }, [getGame]);
 
   const playerId = useMemo(() => {

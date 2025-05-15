@@ -13,7 +13,7 @@ import Planet, { SerializedPlanet } from "./background/planet";
 import { vec2 } from "gl-matrix";
 import GameBaseObject from "@shared/game/gameBaseObject";
 
-const DR_FREQ = 200;
+const DR_FREQ = 2000;
 
 export interface NetworkUpdateProperties {}
 
@@ -21,6 +21,7 @@ export default class NetworkUpdate extends GameObject {
   _lastUpdates: Array<NetworkUpdateData>;
   _drift: number = 0;
   rtt: number = 0;
+  receiveMessages: boolean = false;
 
   constructor({}: NetworkUpdateProperties = {}) {
     super();
@@ -31,6 +32,9 @@ export default class NetworkUpdate extends GameObject {
   gameObjectAdded() {
     const socket = (this.game as Game).socket;
     socket.on("networkUpdate", (data: NetworkUpdateData) => {
+      // Skip early messages.
+      if (!this.receiveMessages) return;
+
       // Append update.
       this._lastUpdates.push(data);
     });
