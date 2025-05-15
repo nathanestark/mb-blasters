@@ -25,6 +25,12 @@ export default class Explosion extends ExplosionBase {
     this._renderer.startAnimation("explode");
   }
 
+  onClientRemove() {
+    // Don't remove the explosion when the network says 'removed'.
+    // The client timeout will allow the animation to finish, then
+    // remove it itself.
+  }
+
   draw(camera: DefaultCamera, time: RefreshTime) {
     camera.saveState();
     camera.context.translate(this.position[0], this.position[1]);

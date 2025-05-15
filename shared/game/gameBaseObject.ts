@@ -186,6 +186,10 @@ export default class GameBaseObject
     setPreviousState(this.serializable, this._previousState, this);
   }
 
+  onClientRemove() {
+    this.game.removeGameObject(this);
+  }
+
   protected addSerializableVec2Property(
     name: string,
     options?: {

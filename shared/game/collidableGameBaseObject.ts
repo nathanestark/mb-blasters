@@ -44,6 +44,11 @@ export default class CollidableGameBaseObject
     this.addSerializableProperty("elasticity");
   }
 
+  onClientRemove(): void {
+    super.onClientRemove();
+    this._collider.canCollide = false;
+  }
+
   onCollision(thisObj: ColliderResult, otherObj: ColliderResult) {
     const cThisObj = thisObj as CircleColliderResult;
 

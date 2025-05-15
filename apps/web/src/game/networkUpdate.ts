@@ -11,8 +11,9 @@ import Explosion, { SerializedExplosion } from "./explosion";
 import Starfield, { SerializedStarfield } from "./background/starfield";
 import Planet, { SerializedPlanet } from "./background/planet";
 import { vec2 } from "gl-matrix";
+import GameBaseObject from "@shared/game/gameBaseObject";
 
-const DR_FREQ = 2000;
+const DR_FREQ = 200;
 
 export interface NetworkUpdateProperties {}
 
@@ -144,15 +145,13 @@ export default class NetworkUpdate extends GameObject {
         }
       });
 
-      toDelete
-        .filter((obj) => !(obj.tags || obj.classTags || []).includes("explosion")) // Let the client handle removal of explosions
-        .forEach((obj) => {
+      toDelete.forEach((obj) => {
+        if (obj instanceof GameBaseObject) {
+          (obj as GameBaseObject).onClientRemove();
+        } else {
           game.removeGameObject(obj);
-
-          if (obj instanceof CollidableGameBaseObject) {
-            (obj as CollidableGameBaseObject)._collider.canCollide = false;
-          }
-        });
+        }
+      });
     });
     // Clear out our updates.
     this._lastUpdates = [];
