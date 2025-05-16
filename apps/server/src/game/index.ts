@@ -19,6 +19,7 @@ export default class Game extends GameBase {
   _players: Container;
   _collidables: Container;
   _background: Container;
+  _asteroids: Container;
   _ships: Container;
 
   _worldBounds: WorldBounds;
@@ -45,7 +46,8 @@ export default class Game extends GameBase {
     this._collidables = new Container();
     this._background = new Container();
     this._ships = new Container();
-    this._collidables.children = [this._ships, this._worldBounds];
+    this._asteroids = new Container();
+    this._collidables.children = [this._ships, this._asteroids, this._worldBounds];
 
     const collisionDetection = new CollisionDetection([
       this._worldBounds.position,
@@ -81,6 +83,10 @@ export default class Game extends GameBase {
     this.on("gameObjectRemoved", (obj) => {
       if (obj.tags?.includes("network")) {
         this._networkUpdate.requestUpdate(obj as NetworkSerializable, "delete");
+      }
+      // If we removed the last asteroid, add in new ones.
+      if (obj instanceof Asteroid && this._asteroids.children.length == 0) {
+        this.addLargeAsteroids(10);
       }
     });
   }
@@ -146,23 +152,17 @@ export default class Game extends GameBase {
     );
   }
 
-  addSmallAsteroids() {
-    let numAsteroids = 20;
-
+  addSmallAsteroids(numAsteroids: number = 20) {
     for (let x = 0; x < numAsteroids; x++) {
       this.addAsteroid(5, 5);
     }
   }
-  addMediumAsteroids() {
-    let numAsteroids = 10;
-
+  addMediumAsteroids(numAsteroids: number = 10) {
     for (let x = 0; x < numAsteroids; x++) {
       this.addAsteroid(20, 20);
     }
   }
-  addLargeAsteroids() {
-    let numAsteroids = 5;
-
+  addLargeAsteroids(numAsteroids: number = 5) {
     for (let x = 0; x < numAsteroids; x++) {
       this.addAsteroid(50, 50);
     }
@@ -217,7 +217,6 @@ export default class Game extends GameBase {
     });
     if (radius > 5) {
       asteroid.once("destroying", () => {
-        // this.addAsteroid(asteroid.mass, asteroid.radius, asteroid.position, asteroid.velocity);
         if (radius == 50)
           for (let x = 0; x < 4; x++)
             this.addAsteroid(20, 20, asteroid.position, asteroid.velocity);
@@ -228,7 +227,7 @@ export default class Game extends GameBase {
     asteroid.on("networkChange", () => {
       this._networkUpdate.requestUpdate(asteroid);
     });
-    this.addGameObject(asteroid);
+    this.addGameObject(asteroid, this._asteroids);
   }
 
   async addPlayer(player: Player): Promise<Player> {
