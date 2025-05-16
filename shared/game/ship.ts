@@ -20,6 +20,7 @@ import {
 } from "./specials/index";
 
 export type ShipType = "deltaship" | "sweepship" | "bustership";
+export type FireModeType = "burst" | "single" | "double" | "doubleAlt" | "shot";
 
 export interface ShipEventContext {
   cancel: boolean;
@@ -50,6 +51,7 @@ export const DESTROY_TIME = 1000;
 
 export interface ShipConfiguration {
   type: ShipType;
+  fireMode: FireModeType;
   special: SpecialType;
   bulletSpeed: number;
   maxThrust: number;
@@ -67,6 +69,7 @@ export interface SerializedShip extends SerializedCollidableGameBaseObject {
   _destroying: boolean;
 
   _shipType: ShipType;
+  _fireMode: FireModeType;
   _special: SerializedSpecial;
   _bulletSpeed: number;
   _maxThrust: number;
@@ -76,6 +79,7 @@ export interface SerializedShip extends SerializedCollidableGameBaseObject {
 export interface ShipProperties extends CollidableGameBaseObjectProperties {
   color?: string;
   type?: ShipType;
+  fireMode?: FireModeType;
   special?: SpecialType;
   bulletSpeed?: number;
   maxThrust?: number;
@@ -89,6 +93,7 @@ export default class Ship extends CollidableGameBaseObject implements EventEmitt
 
   _color: string = "#F00";
   _type: ShipType = "bustership";
+  _fireMode: FireModeType = "single";
   _special: Special;
   _thrust: number = 0;
   _rotate: number = 0;
@@ -106,6 +111,7 @@ export default class Ship extends CollidableGameBaseObject implements EventEmitt
     {
       color,
       type,
+      fireMode,
       special,
       bulletSpeed,
       maxThrust,
@@ -129,6 +135,7 @@ export default class Ship extends CollidableGameBaseObject implements EventEmitt
 
     if (color) this._color = color;
     if (type) this._type = type;
+    if (fireMode) this._fireMode = fireMode;
     if (bulletSpeed) this._bulletSpeed = bulletSpeed;
     if (maxThrust) this._maxThrust = maxThrust;
     if (maxRotate) this._maxRotate = maxRotate;
@@ -164,6 +171,7 @@ export default class Ship extends CollidableGameBaseObject implements EventEmitt
     });
 
     this.addSerializableProperty("_type", { serializedName: "_shipType" });
+    this.addSerializableProperty("_fireMode");
     this.addSerializableProperty("_special", {
       init: () => {
         return {};

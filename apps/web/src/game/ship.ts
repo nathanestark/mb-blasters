@@ -16,6 +16,7 @@ import { SpecialType, Special } from "@shared/game/specials";
 import Shield from "./specials/shield";
 import Warp from "./specials/warp";
 import Grav from "./specials/grav";
+import CollidableGameBaseObject, { HitContext } from "@shared/game/collidableGameBaseObject";
 
 export { SerializedShip };
 
@@ -53,6 +54,10 @@ export default class Ship extends ShipBase {
 
   destroyed() {
     // Wait for the server to tell us we're destroyed.
+  }
+
+  onHit(_target: CollidableGameBaseObject, _context: HitContext): void {
+    // Do nothing when being hit. Let the server inform us.
   }
 
   onClientRemove(): void {

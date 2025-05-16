@@ -241,6 +241,7 @@ export default class Game extends GameBase {
     }
     const newShip = new Ship(player, {
       type: config.type,
+      fireMode: config.fireMode,
       special: config.special,
       maxThrust: config.maxThrust,
       maxSpeed: config.maxSpeed,

@@ -23,8 +23,8 @@ export default class Shield extends ShieldBase {
       0,
       this.owner.radius
     );
-    gradient.addColorStop(0, "rgba(255,255,255, 0)");
     const flashing = this._status >= 20 ? 0 : (Math.floor(time.animationTime / 5) % 100) / 100;
+    gradient.addColorStop(0.35, `rgba(${flashing * 255}, ${102 + 153 * flashing}, 255, 0)`);
     gradient.addColorStop(
       1,
       `rgba(${flashing * 255}, ${102 + 153 * flashing}, 255, ${

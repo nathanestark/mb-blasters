@@ -58,6 +58,7 @@ export default class Game extends GameBase implements EventEmitter<GameEventType
 
   shipConfiguration: ShipConfiguration = {
     type: "bustership",
+    fireMode: "single",
     special: "shield",
     bulletSpeed: 500,
     maxThrust: 3000,

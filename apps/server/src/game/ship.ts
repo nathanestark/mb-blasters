@@ -14,6 +14,7 @@ export default class Ship extends ShipBase {
   owner: Player;
 
   _fireRecord: number = 0;
+  _fireCount: number = 0;
   _fireInterval?: NodeJS.Timeout;
 
   constructor(owner: Player, { ...superProps }: ShipProperties = {}) {
@@ -49,10 +50,17 @@ export default class Ship extends ShipBase {
   handleFire(context: OnOffEventContext) {
     if (!context.cancel) {
       if (context.on && !this._firing) {
-        this.fireNow();
-        this._fireInterval = setInterval(() => {
-          this.fireNow();
-        }, 150);
+        const fireModeFn = (
+          {
+            burst: this.fireBurst,
+            single: this.fireSingle,
+            double: this.fireDouble,
+            doubleAlt: this.fireDoubleAlt,
+            shot: this.fireShot
+          }[this._fireMode] || this.fireBurst
+        ).bind(this);
+
+        fireModeFn();
       } else {
         this._firing = false;
         clearInterval(this._fireInterval);
@@ -60,23 +68,107 @@ export default class Ship extends ShipBase {
     }
   }
 
-  fireNow() {
-    if (this._destroying) return;
+  fireBurst() {
+    const fire = () => {
+      if (this._destroying) return;
 
-    if (this._fireRecord >= 4) return;
-    this._fireRecord++;
-    setTimeout(() => {
-      this._fireRecord--;
-    }, 1000);
+      if (this._fireRecord >= 3) return;
+      this._fireRecord++;
+      setTimeout(() => {
+        this._fireRecord--;
+      }, 1000);
+      this.fireBullet();
+    };
 
-    const temp = vec3.fromValues(1, 0, 0);
-    const rotQuat = quat.identity(quat.create());
-    quat.rotateZ(rotQuat, rotQuat, this.rotation);
-    vec3.transformQuat(temp, temp, rotQuat);
+    fire();
+    this._fireInterval = setInterval(fire, 125);
+  }
 
-    const position = vec2.clone(this.position);
-    const velocity = vec2.fromValues(temp[0], temp[1]);
-    vec2.add(position, position, vec2.scale(vec2.create(), velocity, this.radius));
+  fireSingle() {
+    const fire = () => {
+      if (this._destroying) return;
+
+      if (this._fireRecord >= 4) return;
+      this._fireRecord++;
+      setTimeout(() => {
+        this._fireRecord--;
+      }, 1000);
+      this.fireBullet();
+    };
+
+    fire();
+    this._fireInterval = setInterval(fire, 250);
+  }
+
+  fireDouble() {
+    const fire = () => {
+      if (this._destroying) return;
+
+      if (this._fireRecord >= 1) return;
+      this._fireCount++;
+      this._fireRecord++;
+      setTimeout(() => {
+        this._fireRecord--;
+      }, 250);
+      this.fireBullet(
+        vec2.fromValues(this.radius * 0.25, (1 - (this._fireCount % 2) * 2) * this.radius * 0.75)
+      );
+    };
+
+    fire();
+    this._fireInterval = setInterval(fire, 250);
+  }
+
+  fireDoubleAlt() {
+    const fire = () => {
+      if (this._destroying) return;
+
+      if (this._fireRecord >= 1) return;
+      this._fireRecord++;
+      setTimeout(() => {
+        this._fireRecord--;
+      }, 500);
+      for (let x = 0; x < 2; x++) {
+        this._fireCount++;
+        this.fireBullet(
+          vec2.fromValues(this.radius * 0.25, (1 - (this._fireCount % 2) * 2) * this.radius * 0.75)
+        );
+      }
+    };
+
+    fire();
+    this._fireInterval = setInterval(fire, 500);
+  }
+
+  fireShot() {
+    const fire = () => {
+      if (this._destroying) return;
+
+      if (this._fireRecord >= 1) return;
+      this._fireRecord++;
+      setTimeout(() => {
+        this._fireRecord--;
+      }, 1000);
+      const diff = Math.PI / 16;
+      const total = 4;
+      const start = (diff * (total + -1)) / -2;
+      for (let x = 0; x < total; x++) {
+        this._fireCount++;
+        this.fireBullet(null, start + diff * x);
+      }
+    };
+
+    fire();
+    this._fireInterval = setInterval(fire, 1000);
+  }
+
+  fireBullet(offset: vec2 | null = null, rot: number = 0) {
+    if (!offset) offset = vec2.fromValues(this.radius, 0);
+
+    const position = vec2.rotate(vec2.create(), offset, [0, 0], this.rotation);
+    vec2.add(position, position, this.position);
+    const velocity = vec2.rotate(vec2.create(), [1, 0], [0, 0], this.rotation + rot);
+
     vec2.scale(velocity, velocity, this._bulletSpeed);
     vec2.add(velocity, velocity, this.velocity);
     const bullet = new Bullet(this, {

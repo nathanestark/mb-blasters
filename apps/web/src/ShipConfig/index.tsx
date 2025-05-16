@@ -9,11 +9,10 @@ import React, {
 } from "react";
 import cx from "classnames";
 
-import { ShipConfiguration, ShipType } from "@shared/game/ship";
+import { FireModeType, ShipConfiguration, ShipType } from "@shared/game/ship";
 import { SpecialType } from "@shared/game/specials";
 
 import useGame from "../useGame";
-import Player from "@web/game/player";
 
 import DeltaShipIcon from "@web/svgs/deltaShip";
 import SweepShipIcon from "@web/svgs/sweepShip";
@@ -25,6 +24,11 @@ import MissleSpecialIcon from "@web/svgs/missleSpecial";
 import WarpSpecialIcon from "@web/svgs/warpSpecial";
 import CloakSpecialIcon from "@web/svgs/cloakSpecial";
 import LockIcon from "@web/svgs/lock";
+import SingleFireModeIcon from "@web/svgs/singleFireMode";
+import BurstFireModeIcon from "@web/svgs/burstFireMode";
+import DoubleFireModeIcon from "@web/svgs/doubleFireMode";
+import DoubleAltFireModeIcon from "@web/svgs/doubleAltFireMode";
+import ShotFireModeIcon from "@web/svgs/shotFireMode";
 
 import styles from "./styles.module.scss";
 import Card from "@web/components/Card";
@@ -46,6 +50,13 @@ const SHIPS: Record<ShipType, ShipType> = {
   deltaship: "bustership",
   bustership: "sweepship",
   sweepship: "deltaship"
+};
+const FIRE_MODES: Record<FireModeType, FireModeType> = {
+  single: "burst",
+  burst: "double",
+  double: "doubleAlt",
+  doubleAlt: "shot",
+  shot: "single"
 };
 const SPECIALS: Record<SpecialType, SpecialType> = {
   shield: "warp",
@@ -72,6 +83,7 @@ const ShipConfig: FC<Props> = ({ className }) => {
     if (!game)
       return {
         type: "bustership",
+        fireMode: "single",
         special: "shield",
         bulletSpeed: 600,
         maxThrust: 3000,
@@ -83,6 +95,7 @@ const ShipConfig: FC<Props> = ({ className }) => {
   }, [getGame]);
 
   const [ship, setShip] = useState<ShipType>(shipConfig.type);
+  const [fireMode, setFireMode] = useState<FireModeType>(shipConfig.fireMode);
   const [special, setSpecial] = useState<SpecialType>(shipConfig.special);
 
   const [locks, setLocks] = useState<Array<Sliders>>([]);
@@ -220,6 +233,10 @@ const ShipConfig: FC<Props> = ({ className }) => {
     setShip((prev) => SHIPS[prev]);
   }, []);
 
+  const handleFireModeTypeClicked = useCallback(() => {
+    setFireMode((prev) => FIRE_MODES[prev]);
+  }, []);
+
   const handleSpecialTypeClicked = useCallback(() => {
     setSpecial((prev) => SPECIALS[prev]);
   }, []);
@@ -230,6 +247,7 @@ const ShipConfig: FC<Props> = ({ className }) => {
       game.shipConfiguration = {
         ...game.shipConfiguration,
         type: ship,
+        fireMode: fireMode,
         special: special,
         maxThrust: THRUST_MIN + (thrust / 100) * (THRUST_MAX - THRUST_MIN),
         maxSpeed: MAX_SPEED_MIN + (maxSpeed / 100) * (MAX_SPEED_MAX - MAX_SPEED_MIN),
@@ -239,10 +257,11 @@ const ShipConfig: FC<Props> = ({ className }) => {
           SPECIAL_POWER_MIN + (specialPower / 100) * (SPECIAL_POWER_MAX - SPECIAL_POWER_MIN)
       };
     }
-  }, [getGame, special, ship, thrust, maxRotate, maxSpeed, bulletSpeed, specialPower]);
+  }, [getGame, special, ship, fireMode, thrust, maxRotate, maxSpeed, bulletSpeed, specialPower]);
 
   /*
     type: ShipType;
+    fireMode: FireModeType;
     special: SpecialType;
     bulletSpeed: number;
     maxThrust: number;
@@ -268,6 +287,19 @@ const ShipConfig: FC<Props> = ({ className }) => {
             <DeltaShipIcon />
           ) : (
             <SweepShipIcon />
+          )}
+        </button>
+        <button onClick={handleFireModeTypeClicked}>
+          {fireMode == "single" ? (
+            <SingleFireModeIcon />
+          ) : fireMode == "burst" ? (
+            <BurstFireModeIcon />
+          ) : fireMode == "double" ? (
+            <DoubleFireModeIcon />
+          ) : fireMode == "doubleAlt" ? (
+            <DoubleAltFireModeIcon />
+          ) : (
+            <ShotFireModeIcon />
           )}
         </button>
         <button onClick={handleSpecialTypeClicked}>
