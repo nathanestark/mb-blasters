@@ -199,7 +199,7 @@ export default class Game extends GameBase {
 
     vec2.add(
       velocity,
-      velocity,
+      vec2.scale(velocity, velocity, 2),
       vec2.fromValues(
         (1000 / mass) * (1 - Math.random() * 2),
         (1000 / mass) * (1 - Math.random() * 2)

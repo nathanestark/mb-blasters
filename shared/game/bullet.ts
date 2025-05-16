@@ -20,7 +20,7 @@ export interface BulletProperties extends CollidableGameBaseObjectProperties {
 
 export default class Bullet extends CollidableGameBaseObject {
   owner: CollidableGameBaseObject;
-  _color: string = "#860";
+  _color: string = "#eb5905";
 
   constructor(owner: CollidableGameBaseObject, { color, ...superProps }: BulletProperties = {}) {
     super({
