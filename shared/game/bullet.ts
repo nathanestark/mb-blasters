@@ -2,8 +2,10 @@ import { CircleColliderResult, ColliderResult } from "star-engine";
 import { NetworkObject } from "./network";
 import CollidableGameBaseObject, {
   CollidableGameBaseObjectProperties,
-  SerializedCollidableGameBaseObject
+  SerializedCollidableGameBaseObject,
+  HitContext
 } from "./collidableGameBaseObject";
+import { vec2 } from "gl-matrix";
 
 export interface BulletConfiguration {}
 
@@ -47,23 +49,24 @@ export default class Bullet extends CollidableGameBaseObject {
     this.addSerializableProperty("_color", { serializedName: "color" });
   }
 
+  onHit(target: CollidableGameBaseObject, context: HitContext): void {
+    super.onHit(target, context);
+
+    // Bullet should go away.
+    this.removed = true;
+    this._collider.canCollide = false;
+    this.game.removeGameObject(this);
+  }
+
   onCollision(thisObj: ColliderResult, otherObj: ColliderResult) {
+    super.onCollision(thisObj, otherObj);
+
+    // Never collide with other bullets, or with our parent.
     const myParent = otherObj.owner && otherObj.owner == this.owner;
     if (otherObj.owner instanceof CollidableGameBaseObject) {
-      // Ignore the collision if it is another bullet, or our parent.
-      const ignore = myParent || otherObj.owner instanceof Bullet;
-      if (!ignore) {
-        // Bullet should go away.
-        this.removed = true;
-        this._collider.canCollide = false;
-        this.game.removeGameObject(this);
-      }
-      // If we impact, or are ignoring, we don't need the 'onCollided' called.
-      thisObj.canceled = true;
-      return;
+      // If we impact, we don't need the 'onCollided' called.
+      thisObj.canceled = myParent || otherObj.owner instanceof Bullet;
     }
-
-    super.onCollision(thisObj, otherObj);
   }
 
   serialize(changesOnly = false): SerializedBullet | null {

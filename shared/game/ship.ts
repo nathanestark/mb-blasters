@@ -1,11 +1,12 @@
-import { EventEmitter } from "events";
 import { vec2, vec3, quat } from "gl-matrix";
-import { CircleColliderResult, ColliderResult, RefreshTime } from "star-engine";
+import { EventEmitter, CircleColliderResult, ColliderResult, RefreshTime } from "star-engine";
 import CollidableGameBaseObject, {
   CollidableGameBaseObjectProperties,
-  SerializedCollidableGameBaseObject
+  SerializedCollidableGameBaseObject,
+  HitContext,
+  CollidableGameBaseObjectEventTypes
 } from "./collidableGameBaseObject";
-import { hasPreviousStateChanged, NetworkObject, setPreviousState } from "./network";
+import { NetworkObject, setPreviousState } from "./network";
 import Player from "./player";
 import Bullet from "./bullet";
 import {
@@ -33,7 +34,20 @@ export interface CollisionEventContext extends ShipEventContext {
   otherObj: ColliderResult;
 }
 
+export interface ShipEventTypes extends CollidableGameBaseObjectEventTypes {
+  destroying: [obj: Ship];
+  destroyed: [obj: Ship];
+  networkChange: [obj: Ship];
+
+  fire: [obj: Ship, context: OnOffEventContext];
+  thrust: [obj: Ship, context: OnOffEventContext];
+  rotateCounterClockwise: [obj: Ship, context: OnOffEventContext];
+  rotateClockwise: [obj: Ship, context: OnOffEventContext];
+  special: [obj: Ship, context: OnOffEventContext];
+}
+
 export const DESTROY_TIME = 1000;
+
 export interface ShipConfiguration {
   type: ShipType;
   special: SpecialType;
@@ -70,7 +84,7 @@ export interface ShipProperties extends CollidableGameBaseObjectProperties {
   specialPower?: number;
 }
 
-export default class Ship extends CollidableGameBaseObject {
+export default class Ship extends CollidableGameBaseObject implements EventEmitter<ShipEventTypes> {
   owner: Player;
 
   _color: string = "#F00";
@@ -86,8 +100,6 @@ export default class Ship extends CollidableGameBaseObject {
   _maxThrust: number = 3000;
   _maxRotate: number = 0.04;
   maxSpeed: number = 600;
-
-  _emitter = new EventEmitter();
 
   constructor(
     owner: Player,
@@ -177,59 +189,12 @@ export default class Ship extends CollidableGameBaseObject {
     this.addSerializableProperty("_maxRotate");
   }
 
-  on<T extends ShipEventContext>(
-    event:
-      | "destroying"
-      | "destroyed"
-      | "fire"
-      | "thrust"
-      | "rotateCounterClockwise"
-      | "rotateClockwise"
-      | "special"
-      | "collision"
-      | "collided"
-      | "networkChange",
-    listener: (ship: Ship, context: T) => void
-  ) {
-    this._emitter.on(event, listener);
-  }
-  off<T extends ShipEventContext>(
-    event:
-      | "destroying"
-      | "destroyed"
-      | "fire"
-      | "thrust"
-      | "rotateCounterClockwise"
-      | "rotateClockwise"
-      | "special"
-      | "collision"
-      | "networkChange",
-    listener: (ship: Ship, context: T) => void
-  ) {
-    this._emitter.off(event, listener);
-  }
-  once<T extends ShipEventContext>(
-    event:
-      | "destroying"
-      | "destroyed"
-      | "fire"
-      | "thrust"
-      | "rotateCounterClockwise"
-      | "rotateClockwise"
-      | "special"
-      | "collision"
-      | "networkChange",
-    listener: (ship: Ship, context: T) => void
-  ) {
-    this._emitter.once(event, listener);
-  }
-  private emit(event: string, ...args: Array<any>) {
-    // What if one of the args is a context that can be canceled?
-    // No sense in sending an update out if it was canceled.
-    this._emitter.emit(event, ...args);
-    if (!["collision", "collided"].includes(event)) {
-      this._emitter.emit("networkChange", this);
+  protected emit<K extends keyof ShipEventTypes>(event: K, ...args: ShipEventTypes[K]): boolean {
+    const ret = super.emit(event, ...args);
+    if (!["collided"].includes(event as string)) {
+      super.emit("networkChange", this);
     }
+    return ret;
   }
 
   requestUpdate?(): void;
@@ -237,13 +202,13 @@ export default class Ship extends CollidableGameBaseObject {
   destroy() {
     if (this._destroying) return;
 
-    this.emit("destroying", this);
     this._destroying = true;
     this._firing = false;
     this._thrust = 0;
     this._rotate = 0;
     this._special.off();
     this._collider.canCollide = false;
+    this.emit("destroying", this);
 
     setTimeout(() => this.destroyed(), DESTROY_TIME);
   }
@@ -323,34 +288,22 @@ export default class Ship extends CollidableGameBaseObject {
     super.update(time);
   }
 
-  onCollision(thisObj: ColliderResult, otherObj: ColliderResult) {
-    // Nothing happens if it is our bullet.
-    const myBullet = otherObj.owner instanceof Bullet && otherObj.owner.owner == this;
-    if (otherObj.owner instanceof CollidableGameBaseObject && myBullet) {
-      thisObj.canceled = true;
-      return;
-    }
+  onHit(target: CollidableGameBaseObject, context: HitContext): void {
+    super.onHit(target, context);
 
-    // Handle natural collision (updating velocity, etc)
-    super.onCollision(thisObj, otherObj);
-
-    const context = { thisObj, otherObj, cancel: false };
-    this.emit("collision", this, context);
-
-    if (!context.cancel && otherObj.owner instanceof CollidableGameBaseObject) {
-      // Any collision destroys our ship.
-      this.destroy();
-    }
+    if (!context.canceled) this.destroy();
   }
 
-  onCollided(thisObj: CircleColliderResult, otherObj: ColliderResult) {
-    const context = { thisObj, otherObj, cancel: false };
-    this.emit("collided", this, context);
+  onCollision(thisObj: ColliderResult, otherObj: ColliderResult) {
+    // Nothing happens if it is our bullet.
+    if (otherObj.owner instanceof Bullet && otherObj.owner.owner == this) {
+      thisObj.canceled = true;
+    }
 
-    // If we're destroyed, don't adjust overlap.
-    if (this._destroying) return;
-
-    super.onCollided(thisObj, otherObj);
+    // If we're destroyed, we can't collide anymore either.
+    if (this._destroying) {
+      thisObj.canceled = true;
+    }
   }
 
   createSpecial(type: SpecialType, power: number): Special {

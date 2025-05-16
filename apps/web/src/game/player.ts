@@ -3,6 +3,7 @@ import PlayerBase, {
   PlayerProperties as PlayerBaseProperties,
   SerializedPlayer
 } from "@shared/game/player";
+import Game from "./";
 
 export { SerializedPlayer, PlayerBaseProperties };
 
@@ -16,6 +17,6 @@ export default class Player extends PlayerBase {
 
   deserialize(obj: NetworkObject, initialize?: boolean): void {
     super.deserialize(obj, initialize);
-    this.game?.emit("playerChanged", obj);
+    (this.game as Game)?.onPlayerChanged(this);
   }
 }

@@ -1,11 +1,10 @@
-import { vec2, vec3, quat } from "gl-matrix";
+import { vec2 } from "gl-matrix";
 import { RefreshTime, Resources } from "star-engine";
 import ShipBase, {
   ShipProperties as ShipBaseProperties,
   SerializedShip,
   OnOffEventContext
 } from "@shared/game/ship";
-import Bullet from "@shared/game/bullet";
 import Player from "./player";
 import GameBaseObjectRenderer, {
   RenderableImageWithAnimation,
@@ -43,23 +42,29 @@ export default class Ship extends ShipBase {
 
     this._canvas = new OffscreenCanvas(1, 1);
     this._context = this._canvas.getContext("2d") as OffscreenCanvasRenderingContext2D;
+
+    this.once("destroying", this.handleDestroying.bind(this));
+    this.on("thrust", (_obj, context) => this.handleThrust(context));
   }
 
-  destroy() {
-    if (this._fireInterval) clearInterval(this._fireInterval);
-    super.destroy();
+  handleDestroying() {
     this._renderer.startAnimation("destroy");
   }
 
-  thrust(on: boolean) {
+  destroyed() {
+    // Wait for the server to tell us we're destroyed.
+  }
+
+  onClientRemove(): void {
+    super.destroyed();
+  }
+
+  handleThrust(context: OnOffEventContext) {
     if (this.removed || this._destroying) return;
 
-    const context: OnOffEventContext = { on, cancel: false };
-    this._emitter.emit("thrust", this, context);
     if (!context.cancel) {
-      if (!!this._thrust != on) {
-        this._thrust = on ? this._maxThrust : 0;
-        if (on) {
+      if (!!this._thrust != context.on) {
+        if (context.on) {
           this._renderer.startAnimation("thrust");
         } else {
           this._renderer.stopAnimation();

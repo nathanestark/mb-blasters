@@ -45,9 +45,7 @@ function App() {
   }, [disconnected]);
 
   useEffect(() => {
-    console.log("??", !!game, !game?._running, game?.primaryCamera);
     if (game && !game._running && game.primaryCamera) {
-      console.log("???");
       console.log("Game Connect/Start");
       game.connect();
       game.start();

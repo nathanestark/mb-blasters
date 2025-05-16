@@ -1,5 +1,7 @@
 import { vec2 } from "gl-matrix";
 import {
+  EventEmitter,
+  GameObjectEventTypes,
   CircleCollider,
   CircleCollidable,
   Math2D,
@@ -13,6 +15,17 @@ import GameBaseObject, {
   GameBaseObjectProperties
 } from "./gameBaseObject";
 
+export interface CollidedContext {
+  thisObj: ColliderResult;
+  otherObj: ColliderResult;
+  canceled: boolean;
+}
+export interface HitContext {
+  thisObj: CircleColliderResult;
+  targetObj: CircleColliderResult;
+  canceled: boolean;
+}
+
 export interface SerializedCollidableGameBaseObject extends SerializedGameBaseObject {
   elasticity: number;
 }
@@ -21,11 +34,26 @@ export interface CollidableGameBaseObjectProperties extends GameBaseObjectProper
   elasticity?: number;
 }
 
+export interface CollidableGameBaseObjectEventTypes extends GameObjectEventTypes {
+  collided: [
+    obj: CollidableGameBaseObject,
+    target: CollidableGameBaseObject,
+    context: CollidedContext
+  ];
+  hit: [obj: CollidableGameBaseObject, target: CollidableGameBaseObject, context: HitContext];
+}
+
 export default class CollidableGameBaseObject
   extends GameBaseObject
-  implements GameObject2D, CircleCollidable, NetworkSerializable, NetworkDeserializable
+  implements
+    GameObject2D,
+    CircleCollidable,
+    NetworkSerializable,
+    NetworkDeserializable,
+    EventEmitter<CollidableGameBaseObjectEventTypes>
 {
   elasticity: number = 1;
+  target: CollidableGameBaseObject | null = null;
 
   _collider: CircleCollider;
 
@@ -49,24 +77,61 @@ export default class CollidableGameBaseObject
     this._collider.canCollide = false;
   }
 
-  onCollision(thisObj: ColliderResult, otherObj: ColliderResult) {
+  onHit(target: CollidableGameBaseObject, context: HitContext): void {
+    this.emit("hit", this, target, context);
+  }
+
+  testHitTarget(
+    target: CollidableGameBaseObject,
+    thisObj: CircleColliderResult,
+    targetObj: CircleColliderResult
+  ) {
+    if (this.target || target.target) return;
+
+    // Fire onHit for both targets.
+    let context: HitContext = {
+      thisObj: thisObj,
+      targetObj: targetObj,
+      canceled: false
+    };
+    this.onHit(target, context);
+    if (!context.canceled) {
+      this.target = target;
+    }
+
+    context = {
+      thisObj: targetObj,
+      targetObj: thisObj,
+      canceled: false
+    };
+    target.onHit(this, context);
+    if (!context.canceled) {
+      target.target = this;
+    }
+  }
+
+  // Determine if we want the collision to take place.
+  onCollision(_thisObj: ColliderResult, _otherObj: ColliderResult) {
+    // By default, collisions take place; we don't cancel.
+  }
+
+  // Once we've collided, what should we do?
+  onCollided(thisObj: ColliderResult, otherObj: ColliderResult) {
+    const context: CollidedContext = { thisObj, otherObj, canceled: false };
+    this.emit("collided", this, context);
+    if (context.canceled) return;
+
     const cThisObj = thisObj as CircleColliderResult;
-
-    //collider: collider1,
-    //parent: collider1.parent,
-    //position: pos1,
-    //normal: norm1,
-    //velocity: vec2.clone(collider1.velocity),
-    //timeLeft: t,
-    //radius: collider1.radius,
-
-    const normal = cThisObj.normal;
-
-    // On collision, we want to bounce.
-    const temp = vec2.create();
-
     const cOtherObj = otherObj as CircleColliderResult;
+    const cOtherOwner = otherObj.owner as CollidableGameBaseObject;
 
+    // Check if we 'hit'.
+    if (cOtherOwner && cOtherOwner instanceof CollidableGameBaseObject) {
+      this.testHitTarget(cOtherOwner, cThisObj, cOtherObj);
+    }
+
+    // Bounce our object.
+    const normal = cThisObj.normal;
     if (otherObj && otherObj.owner instanceof CollidableGameBaseObject) {
       const gbOtherOwner = otherObj.owner as CollidableGameBaseObject;
 
@@ -94,24 +159,14 @@ export default class CollidableGameBaseObject
 
     // Finally calculate new position based off of collision position,
     // new velocity and negated timeLeft.
-    vec2.scale(temp, this.velocity, cThisObj.timeLeft);
-    vec2.add(this.position, cThisObj.position, temp);
-  }
-
-  onCollided(thisObj: ColliderResult, otherObj: ColliderResult) {
-    const cThisObj = thisObj as CircleColliderResult;
-    const cOtherObj = otherObj as CircleColliderResult;
-    const cOtherOwner = otherObj.owner as CollidableGameBaseObject;
-
-    // If the other thing is no longer collidable, then we don't have to
-    // adjust overlap.
-    if (!cOtherObj.collider.canCollide) return;
-
-    const minDist = cThisObj.radius + cOtherObj.radius + Number.EPSILON;
+    const tempVel = vec2.create();
+    vec2.scale(tempVel, this.velocity, cThisObj.timeLeft);
+    vec2.add(this.position, cThisObj.position, tempVel);
 
     // As a last check, we need to make sure that despite all this, the two objects
-    // are not on top of each other.
-    if (vec2.sqrDist(this.position, cOtherObj.owner!.position) <= minDist ** 2) {
+    // are not on top of each other. But doesn't count if we took a hit.
+    const minDist = cThisObj.radius + cOtherObj.radius + Number.EPSILON;
+    if (!this.target && vec2.sqrDist(this.position, cOtherObj.owner!.position) <= minDist ** 2) {
       const temp = vec2.create();
       vec2.sub(temp, this.position, cOtherObj.owner!.position);
       const amt = minDist - vec2.length(temp);

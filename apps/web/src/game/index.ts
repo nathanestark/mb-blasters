@@ -1,20 +1,17 @@
-import { EventEmitter } from "events";
 import { Socket } from "socket.io-client";
 import {
+  Game as GameBase,
+  GameProperties as GameBaseProperties,
+  GameEventTypes as GameEventBaseTypes,
   CollisionDetection,
   Container,
   CONTROLLER_ACTION,
   FPSHud,
-  GameEventEmitter,
+  EventEmitter,
   GameObject,
   InputController,
   Resources,
   TextHud
-} from "star-engine";
-import {
-  Game as GameBase,
-  GameProperties as GameBaseProperties,
-  GameEventTypes as GameEventBaseTypes
 } from "star-engine";
 import NetworkUpdate from "./networkUpdate";
 import Player, { SerializedPlayer } from "./player";
@@ -40,7 +37,7 @@ interface GameEventTypes extends GameEventBaseTypes {
 
 interface GameProperties extends GameBaseProperties {}
 
-export default class Game extends GameBase implements GameEventEmitter<GameEventTypes> {
+export default class Game extends GameBase implements EventEmitter<GameEventTypes> {
   player?: number;
   ship: number | null = null;
   primaryCamera?: DefaultCamera;
@@ -240,6 +237,9 @@ export default class Game extends GameBase implements GameEventEmitter<GameEvent
     if (!this.player) return;
 
     this.socket.emit("updatePlayer", { id: this.player, type: "PlayerUpdate", ...player });
+  }
+  onPlayerChanged(player: Player) {
+    this.emit("playerChanged", player);
   }
 
   start() {

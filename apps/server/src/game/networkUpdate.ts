@@ -1,13 +1,16 @@
 import { GameObject, RefreshTime } from "star-engine";
 import Game from "./index";
-import { NetworkObject, NetworkSerializable, NetworkUpdateData } from "@shared/game/network";
+import {
+  NetworkObject,
+  NetworkSerializable,
+  NetworkUpdateData,
+  NetworkUpdateTypes
+} from "@shared/game/network";
 import Player from "./player";
 import EventEmitter from "events";
 
-export type RequestUpdateTypes = "full" | "delete" | "default" | "noLerp";
-
 interface ObjUpdate {
-  type: RequestUpdateTypes;
+  type: NetworkUpdateTypes;
   obj: NetworkSerializable;
 }
 
@@ -17,7 +20,7 @@ export interface NetworkUpdateProperties {
 
 export default class NetworkUpdate extends GameObject {
   _nextUpdateTime: number;
-  _minUpdateTime: number = 200;
+  _minUpdateTime: number = 500;
 
   _updates: Array<ObjUpdate> = [];
 
@@ -31,7 +34,7 @@ export default class NetworkUpdate extends GameObject {
     if (typeof minUpdateTime !== "undefined") this._minUpdateTime = minUpdateTime;
   }
 
-  requestUpdate(obj: NetworkSerializable, type: RequestUpdateTypes = "default") {
+  requestUpdate(obj: NetworkSerializable, type: NetworkUpdateTypes = "default") {
     this._updates.push({ type: type, obj });
   }
 
@@ -76,22 +79,16 @@ export default class NetworkUpdate extends GameObject {
   }
 
   issueNetworkUpdate(time: RefreshTime, objs: Array<ObjUpdate>, targets: Array<EventEmitter>) {
-    // console.log(
-    //   time.curTime - time.lastTime,
-    //   this._nextUpdateTime,
-    //   time.curTime,
-    //   this._minUpdateTime
-    // );
     const sObjs = objs.reduce((memo, obj) => {
       if (obj.type == "delete") {
-        return [...memo, { id: obj.obj.id, type: obj.type, __delete: true }];
+        return [...memo, { id: obj.obj.id, type: obj.type, __netType: obj.type }];
       }
       // Don't send it if nothing was changed.
       if (obj.type != "full" && !obj.obj.hasChanged) return memo;
 
       const sObj = obj.obj.serialize(obj.type != "full");
       if (!sObj) return memo;
-      if (obj.type == "noLerp") sObj.__noLerp = true;
+      sObj.__netType = obj.type;
       return [...memo, sObj];
     }, [] as Array<NetworkObject>);
 

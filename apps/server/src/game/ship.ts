@@ -22,9 +22,12 @@ export default class Ship extends ShipBase {
     this.owner = owner;
 
     this._fireRecord = 0;
+
+    this.once("destroying", this.handleDestroying.bind(this));
+    this.on("fire", (_this, context: OnOffEventContext) => this.handleFire(context));
   }
 
-  destroy() {
+  handleDestroying() {
     if (this._fireInterval) clearInterval(this._fireInterval);
     const explosion = new Explosion({
       type: "shipexplosion",
@@ -33,14 +36,19 @@ export default class Ship extends ShipBase {
       velocity: vec2.fromValues(0, 0)
     });
     this.game.addGameObject(explosion);
-    super.destroy();
   }
 
   fire(on: boolean) {
+    if (this.removed || this._destroying) return;
+
     const context: OnOffEventContext = { on, cancel: false };
-    this._emitter.emit("fire", this, context);
+    this.emit("fire", this, context);
+    if (!context.cancel) this._firing = on;
+  }
+
+  handleFire(context: OnOffEventContext) {
     if (!context.cancel) {
-      if (on && !this._firing) {
+      if (context.on && !this._firing) {
         this.fireNow();
         this._fireInterval = setInterval(() => {
           this.fireNow();

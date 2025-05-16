@@ -9,7 +9,7 @@ import { ShipConfiguration } from "@shared/game/ship";
 import Starfield from "@shared/game/background/starfield";
 import Planet, { PlanetType } from "@shared/game/background/planet";
 import Ship from "./ship";
-import Asteroid from "@shared/game/asteroid";
+import Asteroid, { AsteroidTypes } from "@shared/game/asteroid";
 import { NetworkSerializable } from "@shared/game/network";
 
 interface GameProperties extends GameBaseProperties {}
@@ -168,16 +168,20 @@ export default class Game extends GameBase {
     }
   }
 
-  addAsteroid(mass: number, radius: number) {
-    const position3D = vec3.fromValues(
-      1,
-      this._worldBounds.size[0] / 2 - radius,
-      this._worldBounds.size[1] / 2 - radius
-    );
-    const rotQuat = quat.identity(quat.create());
-    quat.rotateZ(rotQuat, rotQuat, Math.random() * Math.PI * 2);
-    vec3.transformQuat(position3D, position3D, rotQuat);
-    const position = vec2.fromValues(position3D[0], position3D[1]);
+  addAsteroid(mass: number, radius: number, position?: vec2, velocity?: vec2) {
+    if (!position) {
+      const position3D = vec3.fromValues(
+        1,
+        this._worldBounds.size[0] / 2 - radius,
+        this._worldBounds.size[1] / 2 - radius
+      );
+      const rotQuat = quat.identity(quat.create());
+      quat.rotateZ(rotQuat, rotQuat, Math.random() * Math.PI * 2);
+      vec3.transformQuat(position3D, position3D, rotQuat);
+      position = vec2.fromValues(position3D[0], position3D[1]);
+    } else {
+      position = vec2.clone(position);
+    }
     // Make sure we are inside our boundaries
     const spawnBox = Math2D.inflateBoundingBox(
       [
@@ -190,23 +194,41 @@ export default class Game extends GameBase {
     vec2.max(position, position, spawnBox[0]);
     vec2.min(position, position, spawnBox[1]);
 
-    this.addGameObject(
-      new Asteroid({
-        radius: radius,
-        mass: mass,
-        position: position,
-        // image: this.resources.get("asteroid").image,
-        velocity: vec2.fromValues(
-          (1000 / mass) * (1 - Math.random() * 2),
-          (1000 / mass) * (1 - Math.random() * 2)
-        ),
+    if (velocity) velocity = vec2.clone(velocity);
+    else velocity = vec2.create();
 
-        color: "white"
-        // onDestroyed: (obj: Asteroid) => {
-        //     destroy(obj);
-        // }
-      })
+    vec2.add(
+      velocity,
+      velocity,
+      vec2.fromValues(
+        (1000 / mass) * (1 - Math.random() * 2),
+        (1000 / mass) * (1 - Math.random() * 2)
+      )
     );
+
+    const asteroid = new Asteroid({
+      type: `asteroid${Math.floor(1 + Math.random() * 10)}` as AsteroidTypes,
+      radius: radius,
+      mass: mass,
+      position: position,
+      velocity: velocity,
+
+      color: "white"
+    });
+    if (radius > 5) {
+      asteroid.once("destroying", () => {
+        // this.addAsteroid(asteroid.mass, asteroid.radius, asteroid.position, asteroid.velocity);
+        if (radius == 50)
+          for (let x = 0; x < 4; x++)
+            this.addAsteroid(20, 20, asteroid.position, asteroid.velocity);
+        else if (radius == 20)
+          for (let x = 0; x < 4; x++) this.addAsteroid(5, 5, asteroid.position, asteroid.velocity);
+      });
+    }
+    asteroid.on("networkChange", () => {
+      this._networkUpdate.requestUpdate(asteroid);
+    });
+    this.addGameObject(asteroid);
   }
 
   async addPlayer(player: Player): Promise<Player> {

@@ -110,10 +110,8 @@ export default class GameBaseObject
     this.addSerializableProperty("mass");
     this.addSerializableProperty("minSpeed");
     this.addSerializableProperty("maxSpeed");
-  }
 
-  gameObjectAdded(): void {
-    this.setPreviousState();
+    this.once("gameObjectAdded", () => this.setPreviousState());
   }
 
   update(time: RefreshTime) {
@@ -138,7 +136,7 @@ export default class GameBaseObject
     const sqrSpeed = this.clampSpeed(this.velocity);
 
     // Apply our velocity to our position, but don't destroy velocity.
-    let serverPosition = null;
+    let serverPosition: vec2 | null = null;
     if (performLerp) {
       serverPosition = vec2.clone(this.serverPosition);
     }
@@ -237,7 +235,7 @@ export default class GameBaseObject
       id: this.id,
 
       ...serializeSerializables(this.serializable, this._previousState, this, changesOnly)
-    };
+    } as SerializedGameBaseObject;
   }
 
   deserialize(obj: NetworkObject, initialize = true) {

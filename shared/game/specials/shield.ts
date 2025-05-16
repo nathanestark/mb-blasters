@@ -2,7 +2,7 @@ import { vec2 } from "gl-matrix";
 import Special, { SerializedSpecial } from "./special";
 import Ship, { CollisionEventContext, OnOffEventContext } from "../ship";
 import { BoundingBoxColliderResult, CircleColliderResult, RefreshTime } from "star-engine";
-import CollidableGameBaseObject from "../collidableGameBaseObject";
+import CollidableGameBaseObject, { HitContext } from "../collidableGameBaseObject";
 import Bullet from "../bullet";
 
 export interface SerializableShield extends SerializedSpecial {
@@ -24,22 +24,16 @@ export default class Shield extends Special {
     this.owner.on("thrust", (ship: Ship, context: OnOffEventContext) => {
       context.cancel = context.on && this._on;
     });
-    this.owner.on("collision", (ship: Ship, context: CollisionEventContext) => {
-      context.cancel = this._on;
-      if (context.cancel) {
+    this.owner.on("hit", (ship: Ship, target: CollidableGameBaseObject, context: HitContext) => {
+      context.canceled = this._on;
+      if (context.canceled) {
         let e = 0;
-        const cOtherObj = context.otherObj as CircleColliderResult;
-        if (typeof cOtherObj.radius === "number") {
-          if (cOtherObj.owner instanceof Bullet) {
-            e = 500;
-          } else {
-            const cOther = cOtherObj.owner as CollidableGameBaseObject;
-            e =
-              0.5 * vec2.dot(cOtherObj.velocity, cOtherObj.normal) * cOther.mass +
-              0.5 * vec2.dot(context.thisObj.velocity, context.thisObj.normal) * owner.mass;
-          }
+        if (target instanceof Bullet) {
+          e = 500;
         } else {
-          e = 0.5 * vec2.dot(context.thisObj.velocity, context.thisObj.normal) * owner.mass;
+          e =
+            0.5 * vec2.dot(context.targetObj.velocity, context.targetObj.normal) * target.mass +
+            0.5 * vec2.dot(context.thisObj.velocity, context.thisObj.normal) * owner.mass;
         }
 
         this._status = Math.max(0, this._status - Math.abs(e) / this.power);

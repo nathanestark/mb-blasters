@@ -25,11 +25,12 @@ export interface NetworkDeserializable extends GameObject {
   deserialize: (obj: NetworkObject, initialize?: boolean) => void;
 }
 
+export type NetworkUpdateTypes = "full" | "delete" | "default" | "noLerp";
+
 export interface NetworkObject {
   type: string;
   id: number;
-  __delete?: boolean;
-  __noLerp?: boolean;
+  __netType: NetworkUpdateTypes;
 }
 
 export interface NetworkUpdateData {
