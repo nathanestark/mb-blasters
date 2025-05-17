@@ -31,6 +31,14 @@ export default class Explosion extends ExplosionBase {
     // remove it itself.
   }
 
+  allowDraw(camera: DefaultCamera): boolean {
+    // Grow by our radius.
+    const size = vec2.fromValues(camera.size.width, camera.size.height);
+    vec2.scale(size, size, this.radius);
+
+    return Math2D.pointInViewMatrix(this.position, camera.viewMatrix, size[0], size[1]);
+  }
+
   draw(camera: DefaultCamera, time: RefreshTime) {
     camera.saveState();
     camera.context.translate(this.position[0], this.position[1]);

@@ -147,7 +147,10 @@ export default class Starfield extends StarfieldBase {
       camera.context.translate(drawSize[0] / -2, drawSize[1] / -2);
 
       camera.context.fillStyle = pattern;
-      camera.context.fillRect(0, 0, drawSize[0], drawSize[1]);
+      camera.context.beginPath();
+      camera.context.rect(0, 0, drawSize[0], drawSize[1]);
+      camera.context.closePath();
+      camera.context.fill();
     } else {
       // Negate camera position, add depth
       const drawPos = vec2.scale(vec2.create(), camera.position, this.depth);
