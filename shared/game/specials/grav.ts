@@ -54,8 +54,13 @@ export default class Grav extends Special {
 
         // Create a force pointed towards us.
         const force = vec2.create();
+        vec2.sub(force, this.owner.position, obj.position);
+
+        // If we're at the same spot, no force applied.
+        if (vec2.squaredLength(force) == 0) return;
+
         // Point towards our ship
-        vec2.normalize(force, vec2.sub(force, this.owner.position, obj.position));
+        vec2.normalize(force, force);
 
         // Work up magnitude based on power and distance squared.
         const mag =
